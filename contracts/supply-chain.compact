@@ -1,0 +1,195 @@
+// Supply Chain Tracker — Midnight Network (Compact)
+//
+// Track a product's journey from manufacturer to distributor to consumer.
+// Each checkpoint is recorded as an on-chain event. Consumers scan a QR code
+// to view the product's full public history and to verify authenticity
+// WITHOUT revealing the product's private seal codes.
+//
+// ═══════════════════════ PRIVACY DESIGN ═══════════════════════════════════
+//
+//  PUBLIC (on-chain — anyone can read via the indexer):
+//    * products  : Map<productId, Product> — the product catalog. Each record
+//                  carries name, manufacturer, current stage, current
+//                  location, event count, and TWO commitment hashes.
+//    * history   : Map<productId, List<Event>> — the full journey timeline
+//                  (stage, location, note, event index) for every product.
+//    * verifications : Map<productId, Uint<64>> — how many successful
+//                  authenticity verifications each product has had.
+//    * The two 32-byte commitments (authenticityHash, authorizationHash).
+//
+//  PRIVATE (witness inputs — PROVED, NEVER WRITTEN TO THE LEDGER):
+//    * batchSecret()   — the product's authenticity seal code. Only known to
+//                        the manufacturer and, physically, to the consumer
+//                        (printed on the product / QR payload). Never appears
+//                        on-chain; only its SHA-256 commitment is public.
+//    * handoffSecret() — the transfer authorization token shared privately
+//                        between parties as the product moves down the chain
+//                        (manufacturer → distributor → consumer). Recording a
+//                        checkpoint requires proving possession of the current
+//                        handoff secret, without ever revealing it.
+//
+//  PROVED WITHOUT REVEALING:
+//    * recordCheckpoint : proves the caller holds the CURRENT handoff secret
+//                         before advancing a product's stage. An on-chain
+//                         observer can see that a checkpoint happened and its
+//                         public details, but NOT who was authorized to do it
+//                         or which secret proved it.
+//    * verifyAuthenticity : proves knowledge of the batch secret that matches
+//                         the product's public commitment. A consumer can
+//                         certify a product is genuine without publishing the
+//                         seal code (so a copycat cannot replay it on-chain).
+//
+//  NOTE: the `disclose()` calls below are DELIBERATE. Compact treats any
+//  value derived from a witness (or an untrusted circuit parameter) that
+//  flows into a public ledger operation as needing an explicit disclosure
+//  annotation. We disclose ONLY: product ids, public catalog fields, public
+//  checkpoint details, and hash commitments of secrets — never the secrets
+//  themselves.
+// ══════════════════════════════════════════════════════════════════════════
+
+pragma language_version 0.23;
+
+import CompactStandardLibrary;
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export enum Stage {
+  MANUFACTURED,
+  IN_TRANSIT,
+  AT_DISTRIBUTOR,
+  DELIVERED
+}
+
+export struct Event {
+  stage: Stage,
+  location: Opaque<"string">,
+  note: Opaque<"string">,
+  eventIndex: Uint<64>
+}
+
+export struct Product {
+  name: Opaque<"string">,
+  manufacturer: Opaque<"string">,
+  stage: Stage,
+  location: Opaque<"string">,
+  authenticityHash: Bytes<32>,
+  authorizationHash: Bytes<32>,
+  eventCount: Uint<64>
+}
+
+// ─── Public ledger state ─────────────────────────────────────────────────────
+
+export ledger products: Map<Opaque<"string">, Product>;
+export ledger history: Map<Opaque<"string">, List<Event>>;
+export ledger verifications: Map<Opaque<"string">, Uint<64>>;
+
+// ─── Private witnesses (never written to the ledger) ─────────────────────────
+
+witness batchSecret(): Bytes<32>;
+witness handoffSecret(): Bytes<32>;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// Domain-separated SHA-256 commitments. The two domains prevent the
+// authenticity secret from being (ab)used as a handoff token and vice versa.
+circuit authenticityCommitment(secret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "sc:auth:"), secret]);
+}
+
+circuit authorizationCommitment(secret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "sc:authz:"), secret]);
+}
+
+circuit nextStage(s: Stage): Stage {
+  return s == Stage.MANUFACTURED ? Stage.IN_TRANSIT :
+         s == Stage.IN_TRANSIT ? Stage.AT_DISTRIBUTOR :
+         s == Stage.AT_DISTRIBUTOR ? Stage.DELIVERED :
+         Stage.DELIVERED;
+}
+
+// ─── Circuits ────────────────────────────────────────────────────────────────
+
+// Manufacturer registers a new product. The public catalog entry and the
+// manufacturing checkpoint are disclosed; the seal codes enter ONLY as
+// public hash commitments (secret never leaves the prover's machine).
+export circuit registerProduct(
+  productId: Opaque<"string">,
+  name: Opaque<"string">,
+  manufacturer: Opaque<"string">,
+  location: Opaque<"string">,
+  note: Opaque<"string">
+): [] {
+  assert(!products.member(disclose(productId)), "product already registered");
+  const product = Product {
+    name: disclose(name),
+    manufacturer: disclose(manufacturer),
+    stage: Stage.MANUFACTURED,
+    location: disclose(location),
+    authenticityHash: disclose(authenticityCommitment(batchSecret())),
+    authorizationHash: disclose(authorizationCommitment(handoffSecret())),
+    eventCount: 1 as Uint<64>
+  };
+  products.insert(disclose(productId), product);
+
+  const ev = Event {
+    stage: Stage.MANUFACTURED,
+    location: disclose(location),
+    note: disclose(note),
+    eventIndex: 1 as Uint<64>
+  };
+  history.insert(disclose(productId), default<List<Event>>);
+  history.lookup(disclose(productId)).pushFront(ev);
+}
+
+// Advance a product along its journey (MANUFACTURED → IN_TRANSIT →
+// AT_DISTRIBUTOR → DELIVERED). Only the holder of the current handoff secret
+// can authorize a checkpoint — proven in zero knowledge.
+export circuit recordCheckpoint(
+  productId: Opaque<"string">,
+  location: Opaque<"string">,
+  note: Opaque<"string">
+): [] {
+  assert(products.member(disclose(productId)), "unknown product");
+  assert(
+    authorizationCommitment(handoffSecret()) == products.lookup(disclose(productId)).authorizationHash,
+    "unauthorized handoff"
+  );
+  const p = products.lookup(disclose(productId));
+  assert(p.stage != Stage.DELIVERED, "product already delivered");
+  const next = nextStage(p.stage);
+
+  const updated = Product {
+    name: p.name,
+    manufacturer: p.manufacturer,
+    stage: next,
+    location: disclose(location),
+    authenticityHash: p.authenticityHash,
+    authorizationHash: p.authorizationHash,
+    eventCount: (p.eventCount + 1) as Uint<64>
+  };
+  products.insert(disclose(productId), updated);
+
+  const ev = Event {
+    stage: next,
+    location: disclose(location),
+    note: disclose(note),
+    eventIndex: (p.eventCount + 1) as Uint<64>
+  };
+  history.lookup(disclose(productId)).pushFront(ev);
+}
+
+// A consumer proves the product is genuine: they must know the batch secret
+// whose SHA-256 commitment matches the product's public authenticityHash.
+// The secret is never revealed; only a public verification counter moves.
+export circuit verifyAuthenticity(productId: Opaque<"string">): [] {
+  assert(products.member(disclose(productId)), "unknown product");
+  assert(
+    authenticityCommitment(batchSecret()) == products.lookup(disclose(productId)).authenticityHash,
+    "authenticity check failed"
+  );
+  if (verifications.member(disclose(productId))) {
+    verifications.insert(disclose(productId), (verifications.lookup(disclose(productId)) + 1) as Uint<64>);
+  } else {
+    verifications.insert(disclose(productId), 1 as Uint<64>);
+  }
+}
