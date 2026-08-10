@@ -48,6 +48,45 @@ export function bytesToHex(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString('hex');
 }
 
+// Domain prefix used by the contract's `authenticityCommitment` circuit. Must
+// stay in sync with `pad(32, "sc:auth:")` in contracts/supply-chain.compact.
+const AUTHENTICITY_DOMAIN = 'sc:auth:';
+const DOMAIN_BYTES = 32;
+
+/**
+ * Recompute the contract's domain-separated SHA-256 authenticity commitment
+ * for a seal code, as a lowercase hex string.
+ *
+ * Mirrors `authenticityCommitment` in contracts/supply-chain.compact so the
+ * server can cheaply pre-check a consumer-supplied code against the on-chain
+ * commitment before spending proof-server time. The ZK proof itself is still
+ * produced by the circuit and submitted to the ledger — this helper is a fast
+ * "fail before proving" guard, not a substitute for the proof.
+ */
+export function authenticityCommitmentHex(secretHex: string): string {
+  const domain = Buffer.concat([
+    Buffer.from(AUTHENTICITY_DOMAIN, 'utf8'),
+    Buffer.alloc(DOMAIN_BYTES - Buffer.byteLength(AUTHENTICITY_DOMAIN)),
+  ]);
+  const secret = hexToBytes(secretHex);
+  if (secret.length !== 32) {
+    throw new Error('Seal code must be exactly 32 bytes (64 hex characters).');
+  }
+  return crypto.createHash('sha256').update(Buffer.concat([domain, Buffer.from(secret)])).digest('hex');
+}
+
+/**
+ * True when the given seal code commits to the given on-chain authenticity
+ * hash — i.e. the consumer's code is the genuine one for that product.
+ */
+export function matchesAuthenticityHash(secretHex: string, onChainAuthenticityHex: string): boolean {
+  try {
+    return authenticityCommitmentHex(secretHex).toLowerCase() === onChainAuthenticityHex.toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
 // ─── CLI secret store ─────────────────────────────────────────────────────────
 //
 // The interactive CLI keeps the secrets it generates on disk (gitignored) so

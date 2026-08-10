@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Buffer } from 'node:buffer';
 import { SupplyChainSimulator } from './supply-chain-simulator.js';
-import { bytesToHex, hexToBytes } from '../src/witnesses.js';
+import { bytesToHex, hexToBytes, authenticityCommitmentHex, matchesAuthenticityHash } from '../src/witnesses.js';
 import type { Ledger } from '../contracts/managed/supply-chain/contract/index.js';
 
 const SECRET_BATCH = hexToBytes('a1'.repeat(32));
@@ -161,6 +161,30 @@ describe('verifyAuthenticity (consumer circuit)', () => {
 
   it('rejects verification of an unknown product', () => {
     expect(() => sim.verifyAuthenticity('SKU-NOPE')).toThrow();
+  });
+});
+
+describe('seal-code pre-check (consumer verification helper)', () => {
+  let sim: SupplyChainSimulator;
+  let onChainAuth: string;
+  beforeEach(() => {
+    sim = new SupplyChainSimulator({ batchSecret: SECRET_BATCH, handoffSecret: SECRET_HANDOFF });
+    sim.registerProduct('SKU-1001', 'Organic Coffee', 'Acme Farms', 'Pune Plant', 'Manufactured');
+    onChainAuth = bytesToHex(sim.getLedger().products.lookup('SKU-1001').authenticityHash);
+  });
+
+  it('recomputes the exact on-chain authenticity commitment for the genuine seal code', () => {
+    expect(authenticityCommitmentHex(bytesToHex(SECRET_BATCH))).toBe(onChainAuth);
+  });
+
+  it('matches the genuine code and rejects a counterfeit one', () => {
+    expect(matchesAuthenticityHash(bytesToHex(SECRET_BATCH), onChainAuth)).toBe(true);
+    expect(matchesAuthenticityHash(bytesToHex(hexToBytes('aa'.repeat(32))), onChainAuth)).toBe(false);
+  });
+
+  it('returns false (never throws) for malformed codes', () => {
+    expect(matchesAuthenticityHash('not-a-hex-code', onChainAuth)).toBe(false);
+    expect(matchesAuthenticityHash('abcd', onChainAuth)).toBe(false);
   });
 });
 
