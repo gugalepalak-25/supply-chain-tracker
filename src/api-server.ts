@@ -8,6 +8,8 @@
  *   POST /api/products               → register a product (returns seal codes)
  *   POST /api/products/:id/checkpoint→ record a checkpoint (ZK handoff)
  *   POST /api/products/:id/verify    → prove authenticity in zero-knowledge
+ *                                    (optional { sealCode } for consumers;
+ *                                    falls back to server-stored codes)
  *
  * Also serves the built frontend (frontend/dist) at the same origin, so a
  * single server powers the whole demo. Run `npm run build --prefix frontend`
@@ -38,6 +40,7 @@ import {
   bytesToHex,
   saveStoredSecrets,
   getStoredSecrets,
+  matchesAuthenticityHash,
   type SupplyChainSecrets,
 } from './witnesses';
 
@@ -143,6 +146,15 @@ async function listProducts(providers: any, contractAddress: string): Promise<an
     out.push(toProductJson(ledger, id, p));
   }
   return out;
+}
+
+/** Full (untruncated) on-chain authenticity commitment for a product, or null. */
+async function productAuthenticityHash(providers: any, contractAddress: string, productId: string): Promise<string | null> {
+  const state = await providers.publicDataProvider.queryContractState(contractAddress);
+  if (!state) return null;
+  const ledger = SupplyChain.ledger(state.data);
+  if (!ledger.products.member(productId)) return null;
+  return bytesToHex(ledger.products.lookup(productId).authenticityHash);
 }
 
 // ─── HTTP helpers ──────────────────────────────────────────────────────────────
@@ -261,14 +273,14 @@ async function main() {
         const productId = decodeURIComponent(match[1]);
         const op = match[2];
         const stored = getStoredSecrets(productId);
-        if (!stored) {
-          send(res, 400, { error: `No stored seal codes for ${productId} — register it from this server first.` });
-          return;
-        }
-        secretHolder.batchSecret = hexToBytes(stored.batchSecretHex);
-        secretHolder.handoffSecret = hexToBytes(stored.handoffSecretHex);
         const b = await readBody(req);
         if (op === 'checkpoint') {
+          if (!stored) {
+            send(res, 400, { error: `No stored seal codes for ${productId} — register it from this server first.` });
+            return;
+          }
+          secretHolder.batchSecret = hexToBytes(stored.batchSecretHex);
+          secretHolder.handoffSecret = hexToBytes(stored.handoffSecretHex);
           const { location, note, actor } = b;
           if (!location) {
             send(res, 400, { error: 'location is required' });
@@ -278,8 +290,35 @@ async function main() {
           const tx = await deployed.callTx.recordCheckpoint(productId, location, checkpointNote);
           send(res, 200, { productId, txId: tx.public.txId, blockHeight: Number(tx.public.blockHeight) });
         } else {
+          const { sealCode } = b;
+          if (sealCode) {
+            // Consumer flow: the code printed on the product. Pre-check it
+            // against the on-chain commitment before burning proof time; the
+            // proof that follows still proves knowledge of the code in ZK.
+            if (typeof sealCode !== 'string' || !/^[0-9a-fA-F]{64}$/.test(sealCode)) {
+              send(res, 400, { error: 'sealCode must be a 64-character hex string' });
+              return;
+            }
+            const onChainHash = await productAuthenticityHash(providers, deployment.address, productId);
+            if (onChainHash === null) {
+              send(res, 404, { error: `Product ${productId} not found` });
+              return;
+            }
+            if (!matchesAuthenticityHash(sealCode, onChainHash)) {
+              send(res, 400, { authentic: false, error: 'Seal code does not match this product — it is not the genuine article.' });
+              return;
+            }
+            secretHolder.batchSecret = hexToBytes(sealCode);
+          } else {
+            if (!stored) {
+              send(res, 400, { error: `No stored seal codes for ${productId} — register it from this server first.` });
+              return;
+            }
+            secretHolder.batchSecret = hexToBytes(stored.batchSecretHex);
+            secretHolder.handoffSecret = hexToBytes(stored.handoffSecretHex);
+          }
           const tx = await deployed.callTx.verifyAuthenticity(productId);
-          send(res, 200, { productId, txId: tx.public.txId, blockHeight: Number(tx.public.blockHeight) });
+          send(res, 200, { productId, authentic: true, txId: tx.public.txId, blockHeight: Number(tx.public.blockHeight) });
         }
         return;
       }

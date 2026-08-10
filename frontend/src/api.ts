@@ -58,4 +58,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ actor }),
     }),
+  verifyWithSealCode: (id: string, sealCode: string) =>
+    request<{ productId: string; authentic: boolean; txId?: string; blockHeight?: number }>(`/api/products/${encodeURIComponent(id)}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ sealCode }),
+    }),
 }
