@@ -74,6 +74,12 @@ Open **http://localhost:4000** — register a product, record a checkpoint, then
 scan the product's QR code to open its journey page and click **Verify
 authenticity** to run the zero-knowledge proof.
 
+On-chain actions (register / checkpoint / verify) require a connected **Lace**
+wallet. Connect it from the header (or the in-context prompt) on the Midnight
+Preprod network; your wallet address is recorded as the actor in the on-chain
+note. The ZK proving itself runs on the API server's devnet wallet — the browser
+wallet is what authorizes and attributes each action.
+
 For frontend development with hot reload:
 
 ```bash

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import QR from './QR'
 import { api, type HealthInfo, type Product } from './api'
+import { useLaceWallet } from './useLaceWallet'
+import { LACE_INSTALL_URL, shortAddress } from './wallet'
 
 const STAGE_COLORS: Record<number, string> = {
   0: '#f59e0b',
@@ -17,6 +19,7 @@ function parseHash(): { view: 'dashboard' } | { view: 'product'; id: string } {
 
 export default function App() {
   const [route, setRoute] = useState(parseHash)
+  const lace = useLaceWallet()
   useEffect(() => {
     const onHash = () => setRoute(parseHash())
     window.addEventListener('hashchange', onHash)
@@ -25,9 +28,9 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header />
+      <Header lace={lace} />
       <main>
-        {route.view === 'dashboard' ? <Dashboard /> : <ProductView key={route.id} productId={route.id} />}
+        {route.view === 'dashboard' ? <Dashboard lace={lace} /> : <ProductView key={route.id} productId={route.id} lace={lace} />}
       </main>
       <footer>
         Supply Chain Tracker · zero-knowledge provenance on Midnight · demo (local devnet)
@@ -36,7 +39,7 @@ export default function App() {
   )
 }
 
-function Header() {
+function Header({ lace }: { lace: ReturnType<typeof useLaceWallet> }) {
   const [health, setHealth] = useState<HealthInfo | null>(null)
   useEffect(() => {
     api.health().then(setHealth).catch(() => setHealth(null))
@@ -50,19 +53,98 @@ function Header() {
           <p className="subtitle">Provenance, verified in zero-knowledge</p>
         </div>
       </div>
-      {health && (
-        <div className="health">
-          <span className={`dot ${health.ok ? 'ok' : 'down'}`} />
-          <span>contract {health.contractAddress.slice(0, 10)}… · {health.products} product{health.products === 1 ? '' : 's'}</span>
-        </div>
-      )}
+      <div className="header-right">
+        {health && (
+          <div className="health">
+            <span className={`dot ${health.ok ? 'ok' : 'down'}`} />
+            <span>contract {health.contractAddress.slice(0, 10)}… · {health.products} product{health.products === 1 ? '' : 's'}</span>
+          </div>
+        )}
+        <WalletButton lace={lace} />
+      </div>
     </header>
+  )
+}
+
+function WalletButton({ lace }: { lace: ReturnType<typeof useLaceWallet> }) {
+  const { status, error, connect, disconnect } = lace
+  const [busy, setBusy] = useState(false)
+
+  const onClick = async () => {
+    setBusy(true)
+    try {
+      if (status.kind === 'connected') {
+        await disconnect()
+      } else {
+        await connect()
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (status.kind === 'connected') {
+    return (
+      <div className="wallet">
+        <span className="wallet-addr" title={status.address}>
+          <span className="dot ok" /> {shortAddress(status.address)}
+        </span>
+        <span className="wallet-net">{status.networkId}</span>
+        <button className="wallet-btn" onClick={onClick} disabled={busy}>
+          Disconnect
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="wallet">
+      <button className="wallet-btn" onClick={onClick} disabled={busy || status.kind === 'connecting'}>
+        {busy || status.kind === 'connecting' ? 'Connecting…' : 'Connect Lace'}
+      </button>
+      {status.kind === 'unavailable' && (
+        <span className="wallet-hint">
+          Wallet not detected —{' '}
+          <a href={LACE_INSTALL_URL} target="_blank" rel="noreferrer">
+            install Lace
+          </a>
+          , then refresh
+        </span>
+      )}
+      {error && <span className="wallet-error">⚠ {error}</span>}
+    </div>
+  )
+}
+
+// ─── Wallet gate ───────────────────────────────────────────────────────────────
+
+function WalletGate({ lace, children }: { lace: ReturnType<typeof useLaceWallet>; children: React.ReactNode }) {
+  const { status, error, connect } = lace
+  if (status.kind === 'connected') return <>{children}</>
+
+  return (
+    <div className="wallet-gate">
+      <p>Connect your Lace wallet to perform on-chain actions.</p>
+      {status.kind === 'unavailable' && (
+        <p className="wallet-hint">
+          Wallet not detected —{' '}
+          <a href={LACE_INSTALL_URL} target="_blank" rel="noreferrer">
+            install Lace
+          </a>
+          , then refresh
+        </p>
+      )}
+      {error && <p className="wallet-error">⚠ {error}</p>}
+      <button className="wallet-btn" onClick={() => connect()} disabled={status.kind === 'connecting'}>
+        {status.kind === 'connecting' ? 'Connecting…' : 'Connect Lace'}
+      </button>
+    </div>
   )
 }
 
 // ─── Dashboard ─────────────────────────────────────────────────────────────────
 
-function Dashboard() {
+function Dashboard({ lace }: { lace: ReturnType<typeof useLaceWallet> }) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -134,7 +216,7 @@ function Dashboard() {
         ))}
       </div>
 
-      {showRegister && <RegisterModal onDone={() => { setShowRegister(false); setRefreshKey((k) => k + 1) }} onClose={() => setShowRegister(false)} />}
+      {showRegister && <RegisterModal lace={lace} onDone={() => { setShowRegister(false); setRefreshKey((k) => k + 1) }} onClose={() => setShowRegister(false)} />}
     </section>
   )
 }
@@ -147,17 +229,21 @@ function originOf(href: string): string {
   }
 }
 
-function RegisterModal({ onDone, onClose }: { onDone: () => void; onClose: () => void }) {
+function RegisterModal({ lace, onDone, onClose }: { lace: ReturnType<typeof useLaceWallet>; onDone: () => void; onClose: () => void }) {
   const [form, setForm] = useState({ productId: '', name: '', manufacturer: '', location: '', note: 'Manufactured' })
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ batchSecretHex: string; handoffSecretHex: string; blockHeight: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const submit = async () => {
+    if (lace.status.kind !== 'connected') {
+      setError('Connect your Lace wallet first.')
+      return
+    }
     setBusy(true)
     setError(null)
     try {
-      const res = await api.register(form)
+      const res = await api.register({ ...form, actor: lace.status.address })
       setResult(res)
       onDone()
     } catch (e) {
@@ -180,7 +266,7 @@ function RegisterModal({ onDone, onClose }: { onDone: () => void; onClose: () =>
             </div>
             <button className="primary" onClick={onClose}>Done</button>
           </div>
-        ) : (
+        ) : lace.status.kind === 'connected' ? (
           <>
             {error && <div className="error-banner">⚠ {error}</div>}
             <label>Product ID <input value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })} placeholder="SKU-1001" /></label>
@@ -195,6 +281,12 @@ function RegisterModal({ onDone, onClose }: { onDone: () => void; onClose: () =>
               </button>
             </div>
           </>
+        ) : (
+          <div className="modal-gate">
+            <WalletGate lace={lace}>
+              <p className="muted">Registering will record your wallet as the manufacturer.</p>
+            </WalletGate>
+          </div>
         )}
       </div>
     </div>
@@ -203,7 +295,7 @@ function RegisterModal({ onDone, onClose }: { onDone: () => void; onClose: () =>
 
 // ─── Product view ──────────────────────────────────────────────────────────────
 
-function ProductView({ productId }: { productId: string }) {
+function ProductView({ productId, lace }: { productId: string; lace: ReturnType<typeof useLaceWallet> }) {
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -228,10 +320,11 @@ function ProductView({ productId }: { productId: string }) {
   }, [load])
 
   const verify = async () => {
+    if (lace.status.kind !== 'connected') return
     setVerifying(true)
     setVerifyMsg(null)
     try {
-      const res = await api.verify(productId)
+      const res = await api.verify(productId, lace.status.address)
       setVerifyMsg(`✓ Authenticity proved in zero-knowledge · block ${res.blockHeight}`)
       await load()
     } catch (e) {
@@ -242,11 +335,12 @@ function ProductView({ productId }: { productId: string }) {
   }
 
   const checkpoint = async () => {
+    if (lace.status.kind !== 'connected') return
     const location = prompt('New location:')
     if (!location) return
     setCpBusy(true)
     try {
-      await api.checkpoint(productId, location, 'Recorded via web demo')
+      await api.checkpoint(productId, location, 'Recorded via web demo', lace.status.address)
       await load()
     } catch (e) {
       alert(`⚠ ${e instanceof Error ? e.message : String(e)}`)
@@ -299,15 +393,17 @@ function ProductView({ productId }: { productId: string }) {
           )}
 
           <h3>Actions</h3>
-          <div className="actions">
-            <button className="primary" onClick={verify} disabled={verifying}>
-              {verifying ? 'Proving in zero-knowledge…' : `Verify authenticity (${product.verifications}×)`}
-            </button>
-            <button onClick={checkpoint} disabled={cpBusy}>
-              {cpBusy ? 'Recording…' : 'Record checkpoint'}
-            </button>
-          </div>
-          {verifyMsg && <p className="verify-msg">{verifyMsg}</p>}
+          <WalletGate lace={lace}>
+            <div className="actions">
+              <button className="primary" onClick={verify} disabled={verifying}>
+                {verifying ? 'Proving in zero-knowledge…' : `Verify authenticity (${product.verifications}×)`}
+              </button>
+              <button onClick={checkpoint} disabled={cpBusy}>
+                {cpBusy ? 'Recording…' : 'Record checkpoint'}
+              </button>
+            </div>
+            {verifyMsg && <p className="verify-msg">{verifyMsg}</p>}
+          </WalletGate>
         </div>
 
         <aside className="side-col">

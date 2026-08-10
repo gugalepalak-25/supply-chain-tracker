@@ -235,7 +235,7 @@ async function main() {
 
       if (p === '/api/products' && method === 'POST') {
         const b = await readBody(req);
-        const { productId, name, manufacturer, location, note } = b;
+        const { productId, name, manufacturer, location, note, actor } = b;
         if (!productId || !name || !manufacturer || !location) {
           send(res, 400, { error: 'productId, name, manufacturer and location are required' });
           return;
@@ -243,7 +243,8 @@ async function main() {
         secretHolder.batchSecret = randomSecret();
         secretHolder.handoffSecret = randomSecret();
         saveStoredSecrets(productId, { ...secretHolder });
-        const tx = await deployed.callTx.registerProduct(productId, name, manufacturer, location, note ?? 'Manufactured');
+        const registerNote = actor ? `${note ?? 'Manufactured'} · registered by ${actor}` : (note ?? 'Manufactured');
+        const tx = await deployed.callTx.registerProduct(productId, name, manufacturer, location, registerNote);
         send(res, 200, {
           productId,
           txId: tx.public.txId,
@@ -268,12 +269,13 @@ async function main() {
         secretHolder.handoffSecret = hexToBytes(stored.handoffSecretHex);
         const b = await readBody(req);
         if (op === 'checkpoint') {
-          const { location, note } = b;
+          const { location, note, actor } = b;
           if (!location) {
             send(res, 400, { error: 'location is required' });
             return;
           }
-          const tx = await deployed.callTx.recordCheckpoint(productId, location, note ?? 'Checkpoint');
+          const checkpointNote = actor ? `${note ?? 'Checkpoint'} · by ${actor}` : (note ?? 'Checkpoint');
+          const tx = await deployed.callTx.recordCheckpoint(productId, location, checkpointNote);
           send(res, 200, { productId, txId: tx.public.txId, blockHeight: Number(tx.public.blockHeight) });
         } else {
           const tx = await deployed.callTx.verifyAuthenticity(productId);
