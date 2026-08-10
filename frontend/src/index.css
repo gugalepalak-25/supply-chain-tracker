@@ -535,3 +535,34 @@ label {
   display: inline-block;
   line-height: 0;
 }
+
+.seal-check {
+  margin-top: 22px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+}
+
+.seal-check-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.seal-check-row input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+}
+
+.verify-ok {
+  margin-top: 10px;
+  color: #34d399;
+  font-size: 13px;
+}
+
+.verify-fail {
+  margin-top: 10px;
+  color: #f87171;
+  font-size: 13px;
+}

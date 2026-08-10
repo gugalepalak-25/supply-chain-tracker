@@ -13,6 +13,7 @@ zero-knowledge**, without revealing the product's secret seal codes.
 | On-chain state + history (structured ledger) | the `products`, `history`, `verifications` collections |
 | ZK handoff between parties without sharing secrets | `recordCheckpoint` |
 | Privacy: only hash commitments of seal codes are public | `verifyAuthenticity`, e2e privacy assertion |
+| Consumer seal-code check — scan, type the code, get a ZK verdict | `SealCodeVerifier` in the web demo |
 | Full dApp: CLI + web UI + QR codes | `src/`, `frontend/` |
 
 ## Architecture
@@ -74,6 +75,12 @@ Open **http://localhost:4000** — register a product, record a checkpoint, then
 scan the product's QR code to open its journey page and click **Verify
 authenticity** to run the zero-knowledge proof.
 
+Consumers holding the physical product can also use the **Consumer seal-code
+check** panel on the journey page: type in the 64-char hex seal code printed on
+the product and it is verified in zero-knowledge against the on-chain
+commitment — no wallet required, and the code itself is never written to the
+ledger.
+
 On-chain actions (register / checkpoint / verify) require a connected **Lace**
 wallet. Connect it from the header (or the in-context prompt) on the Midnight
 Preprod network; your wallet address is recorded as the actor in the on-chain
@@ -107,7 +114,7 @@ Treat them like private keys.
 ## Tests
 
 ```bash
-npm test          # 14 simulator unit tests (contract logic, privacy, stages)
+npm test          # 17 simulator unit tests (contract logic, privacy, stages, seal-code pre-check)
 npm run build     # TypeScript typecheck (root + e2e script)
 npm run test:e2e  # full journey against the deployed devnet contract
 ```

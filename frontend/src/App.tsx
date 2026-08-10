@@ -420,8 +420,59 @@ function ProductView({ productId, lace }: { productId: string; lace: ReturnType<
             <QR value={url} size={180} />
           </div>
           <p className="muted tiny">Scan this code with any phone to open this product's journey.</p>
+          <SealCodeVerifier productId={product.productId} onVerified={load} />
         </aside>
       </div>
     </section>
+  )
+}
+
+// ─── Consumer seal-code check ─────────────────────────────────────────────────
+//
+// A consumer holding the physical seal code (printed on the product / QR
+// payload) enters it here. The server proves knowledge of the code in
+// zero-knowledge — the code itself is never written to the ledger.
+
+function SealCodeVerifier({ productId, onVerified }: { productId: string; onVerified?: () => void }) {
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  const check = async () => {
+    if (!code.trim() || busy) return
+    setBusy(true)
+    setResult(null)
+    try {
+      const res = await api.verifyWithSealCode(productId, code.trim())
+      setResult({
+        ok: res.authentic,
+        msg: `Genuine product — authenticity proved in zero-knowledge${res.blockHeight !== undefined ? ` (block ${res.blockHeight})` : ''}.`,
+      })
+      if (res.authentic) onVerified?.()
+    } catch (e) {
+      setResult({ ok: false, msg: e instanceof Error ? e.message : String(e) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="seal-check">
+      <h3>Consumer seal-code check</h3>
+      <p className="muted tiny">Enter the seal code printed on the product. It is verified in zero-knowledge and never revealed on-chain.</p>
+      <div className="seal-check-row">
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value.trim())}
+          onKeyDown={(e) => e.key === 'Enter' && check()}
+          placeholder="64-char hex seal code"
+          spellCheck={false}
+        />
+        <button onClick={check} disabled={busy || !code.trim()}>
+          {busy ? 'Verifying…' : 'Check'}
+        </button>
+      </div>
+      {result && <p className={result.ok ? 'verify-ok' : 'verify-fail'}>{result.msg}</p>}
+    </div>
   )
 }
