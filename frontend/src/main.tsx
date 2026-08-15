@@ -1,3 +1,4 @@
+import './shims/buffer' // must run before any Midnight SDK import
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'

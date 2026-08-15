@@ -8,6 +8,12 @@ yarn-error.log*
 dist/
 build/
 
+# Vite cache
+.vite/
+
+# Frontend-generated ZK assets (copied by `npm run prepare` from contracts/managed)
+frontend/public/managed/
+
 # Environment variables
 .env
 .env.local

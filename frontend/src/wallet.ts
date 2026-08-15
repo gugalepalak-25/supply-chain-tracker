@@ -7,12 +7,18 @@
 //
 // Reference: https://docs.midnight.network/sdks/community/wallets/community-wallets-integration
 
-import type { ConnectedAPI, InitialAPI, ConnectionStatus } from '@midnight-ntwrk/dapp-connector-api'
+import type {
+  ConnectedAPI,
+  InitialAPI,
+  ConnectionStatus,
+  WalletConnectedAPI,
+} from '@midnight-ntwrk/dapp-connector-api'
 
 export const LACE_INSTALL_URL = 'https://docs.midnight.network/relnotes/lace'
 
 export interface LaceConnection {
   api: ConnectedAPI
+  walletName: string
   address: string
   networkId: string
   dustBalance: bigint | null
@@ -22,7 +28,7 @@ export type WalletStatus =
   | { kind: 'unavailable' }          // no wallet extension detected
   | { kind: 'disconnected' }
   | { kind: 'connecting' }
-  | { kind: 'connected'; address: string; networkId: string; dustBalance: bigint | null }
+  | { kind: 'connected'; walletName?: string; address: string; networkId: string; dustBalance: bigint | null }
 
 // ─── Discovery ────────────────────────────────────────────────────────────────
 
@@ -45,6 +51,11 @@ export function findLaceWallet(wallets: InitialAPI[] = listWallets()): InitialAP
   return wallets.find(isLace) ?? wallets[0] ?? null
 }
 
+/** Human-readable name for a wallet, safe for display in a text node. */
+export function walletDisplayName(w: InitialAPI): string {
+  return (w.name || w.rdns || 'Unknown wallet').trim()
+}
+
 /**
  * Poll for `window.midnight` until a wallet injects it. Extensions inject
  * slightly after `DOMContentLoaded`, so code that runs early must wait.
@@ -61,6 +72,25 @@ export async function pollForWallet(timeoutMs = 10_000): Promise<InitialAPI | nu
 
 // ─── Connect / disconnect ─────────────────────────────────────────────────────
 
+/** Methods this DApp calls on the connected wallet during a transaction flow. */
+const DAPP_METHODS: Array<keyof WalletConnectedAPI> = [
+  'getShieldedAddresses',
+  'balanceUnsealedTransaction',
+  'submitTransaction',
+]
+
+/**
+ * Ask the wallet to pre-grant permissions for the methods this DApp uses, so
+ * register/checkpoint/verify transactions don't open an authorization pop-up on
+ * every call. The wallet may prompt the user once; after that the grants stick
+ * for the session. Best-effort: wallets that don't implement `hintUsage` keep
+ * prompting per transaction.
+ */
+export async function requestWalletPermissions(api: ConnectedAPI): Promise<void> {
+  if (typeof api.hintUsage !== 'function') return
+  await api.hintUsage(DAPP_METHODS)
+}
+
 /**
  * Connect to the wallet. MUST be called synchronously inside the click handler:
  * Lace opens a real authorization pop-up which browsers silently block once
@@ -72,7 +102,17 @@ export async function connectWallet(wallet: InitialAPI, networkId = 'preprod'): 
   if (status.status !== 'connected') throw new Error('wallet disconnected')
   const resolvedNetwork = status.networkId ?? networkId
 
-  const { unshieldedAddress } = await api.getUnshieldedAddress()
+  // Read the wallet's unshielded address for display/actor attribution. This is
+  // best-effort: some wallets tear the connection channel down if too many
+  // methods are called right after `connect()`, so never fail the connect on it.
+  let address = ''
+  try {
+    const { unshieldedAddress } = await api.getUnshieldedAddress()
+    address = unshieldedAddress
+  } catch {
+    address = ''
+  }
+
   let dustBalance: bigint | null = null
   try {
     const dust = await api.getDustBalance()
@@ -81,7 +121,13 @@ export async function connectWallet(wallet: InitialAPI, networkId = 'preprod'): 
     dustBalance = null
   }
 
-  return { api, address: unshieldedAddress, networkId: resolvedNetwork, dustBalance }
+  return {
+    api,
+    walletName: wallet.name,
+    address,
+    networkId: resolvedNetwork,
+    dustBalance,
+  }
 }
 
 async function getConnectionStatus(api: ConnectedAPI): Promise<ConnectionStatus> {

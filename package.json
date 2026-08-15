@@ -11,7 +11,6 @@
     "setup": "npx tsx src/setup.ts",
     "deploy": "npx tsx src/deploy.ts",
     "cli": "npx tsx src/cli.ts",
-    "api": "npx tsx src/api-server.ts",
     "check-balance": "npx tsx src/check-balance.ts",
     "network": "npx tsx src/network.ts",
     "proof-server:start": "docker compose up -d",
@@ -53,5 +52,11 @@
   "overrides": {
     "@midnight-ntwrk/onchain-runtime-v3": "3.1.0"
   },
-  "keywords": ["midnight", "blockchain", "zero-knowledge", "privacy", "supply-chain"]
+  "keywords": [
+    "midnight",
+    "blockchain",
+    "zero-knowledge",
+    "privacy",
+    "supply-chain"
+  ]
 }
