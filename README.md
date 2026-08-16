@@ -52,10 +52,6 @@ ledger, not a hologram.
 - `tests/` — simulator unit tests (`vitest`).
 - `scripts/e2e-check.ts` — full on-chain journey against the deployed contract.
 
-## Prerequisites
-
-- Node.js ≥ 22, npm ≥ 10
-- Docker (for the local Midnight devnet)
 
 ## Quick start
 
