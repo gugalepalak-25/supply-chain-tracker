@@ -1,0 +1,268 @@
+{
+  "compiler-version": "0.31.1",
+  "language-version": "0.23.0",
+  "runtime-version": "0.16.0",
+  "circuits": [
+    {
+      "name": "registerProduct",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "productId",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "name",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "manufacturer",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "location",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "note",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "recordCheckpoint",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "productId",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "location",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        },
+        {
+          "name": "note",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "verifyAuthenticity",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "productId",
+          "type": {
+            "type-name": "Opaque",
+            "tsType": "string"
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    }
+  ],
+  "witnesses": [
+    {
+      "name": "batchSecret",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "handoffSecret",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    }
+  ],
+  "contracts": [
+  ],
+  "ledger": [
+    {
+      "name": "products",
+      "index": 0,
+      "exported": true,
+      "storage": "Map",
+      "key": {
+        "type-name": "Opaque",
+        "tsType": "string"
+      },
+      "value": {
+        "type-name": "Struct",
+        "name": "Product",
+        "elements": [
+          {
+            "name": "name",
+            "type": {
+              "type-name": "Opaque",
+              "tsType": "string"
+            }
+          },
+          {
+            "name": "manufacturer",
+            "type": {
+              "type-name": "Opaque",
+              "tsType": "string"
+            }
+          },
+          {
+            "name": "stage",
+            "type": {
+              "type-name": "Enum",
+              "name": "Stage",
+              "elements": [
+                "MANUFACTURED",
+                "IN_TRANSIT",
+                "AT_DISTRIBUTOR",
+                "DELIVERED"
+              ]
+            }
+          },
+          {
+            "name": "location",
+            "type": {
+              "type-name": "Opaque",
+              "tsType": "string"
+            }
+          },
+          {
+            "name": "authenticityHash",
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          },
+          {
+            "name": "authorizationHash",
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          },
+          {
+            "name": "eventCount",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 18446744073709551615
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "history",
+      "index": 1,
+      "exported": true,
+      "storage": "Map",
+      "key": {
+        "type-name": "Opaque",
+        "tsType": "string"
+      },
+      "value": {
+        "type-name": "List",
+        "type": {
+          "type-name": "Struct",
+          "name": "Event",
+          "elements": [
+            {
+              "name": "stage",
+              "type": {
+                "type-name": "Enum",
+                "name": "Stage",
+                "elements": [
+                  "MANUFACTURED",
+                  "IN_TRANSIT",
+                  "AT_DISTRIBUTOR",
+                  "DELIVERED"
+                ]
+              }
+            },
+            {
+              "name": "location",
+              "type": {
+                "type-name": "Opaque",
+                "tsType": "string"
+              }
+            },
+            {
+              "name": "note",
+              "type": {
+                "type-name": "Opaque",
+                "tsType": "string"
+              }
+            },
+            {
+              "name": "eventIndex",
+              "type": {
+                "type-name": "Uint",
+                "maxval": 18446744073709551615
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "verifications",
+      "index": 2,
+      "exported": true,
+      "storage": "Map",
+      "key": {
+        "type-name": "Opaque",
+        "tsType": "string"
+      },
+      "value": {
+        "type-name": "Uint",
+        "maxval": 18446744073709551615
+      }
+    }
+  ]
+}
