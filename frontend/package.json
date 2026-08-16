@@ -28,9 +28,9 @@
     "react-dom": "^19.2.8"
   },
   "overrides": {
-    "@midnight-ntwrk/onchain-runtime-v3": "3.1.0",
-    "@midnight-ntwrk/ledger-v8": "8.1.1"
-  },
+  "@midnight-ntwrk/onchain-runtime-v3": "3.1.0",
+  "@midnight-ntwrk/ledger-v8": "8.1.0"
+}
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@types/qrcode": "^1.5.6",
