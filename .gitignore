@@ -70,3 +70,4 @@ temp/
 
 # CLI-generated per-product seal codes (sensitive)
 .supply-chain-secrets.json
+.vercel
