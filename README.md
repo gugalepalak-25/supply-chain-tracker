@@ -116,6 +116,10 @@ Wallets need a little **DUST** (Lace: receive it from `mintsaddr`; the CLI's
 `npm run setup` wallet also funds on Preprod). ZK assets are copied into
 `frontend/public/managed/` by `npm run prepare` (runs automatically on
 `npm run build` / `npm run dev`).
+
+###Frontend
+<img width="1905" height="1138" alt="image" src="https://github.com/user-attachments/assets/4340007a-8946-4e71-9b3c-f3e0849a9486" />
+
 ## Smart Contract Deployment
 
 The Supply Chain Tracker smart contract has been deployed to the Midnight Preprod network.
