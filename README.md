@@ -119,6 +119,8 @@ Wallets need a little **DUST** (Lace: receive it from `mintsaddr`; the CLI's
 ## Smart Contract Deployment
 
 The Supply Chain Tracker smart contract has been deployed to the Midnight Preprod network.
+### Contract address
+307597f9daf7343037f33df1bc02dc12911341ea3146ad0ef1ebe1ddc52a959c
 
 ### Deployment Details
 
