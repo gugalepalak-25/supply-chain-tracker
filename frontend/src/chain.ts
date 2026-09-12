@@ -13,8 +13,8 @@ import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-conf
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import * as SupplyChain from '../../contracts/managed/supply-chain/contract/index.js';
-import type { Contract as SupplyChainContract } from '../../contracts/managed/supply-chain/contract/index.js';
+import * as SupplyChain from '../contracts/supply-chain/contract/index.js';
+import type { Contract as SupplyChainContract } from '../contracts/supply-chain/contract/index.js';
 
 import { CONTRACT_ADDRESS, INDEXER_URL, INDEXER_WS_URL, NETWORK_ID, ZK_CONFIG_BASE } from './config';
 import { bytesToHex, hexToBytes } from './hex';
