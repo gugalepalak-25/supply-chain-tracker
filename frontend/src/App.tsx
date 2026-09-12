@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import QR from './QR'
 import { api, type HealthInfo, type Product } from './api'
 import { useLaceWallet } from './useLaceWallet'
-import { LACE_INSTALL_URL, shortAddress, walletDisplayName } from './wallet'
+import { WalletButton, WalletGate } from './components/WalletConnect'
 
 const STAGE_COLORS: Record<number, string> = {
   0: '#f59e0b',
@@ -63,125 +63,6 @@ function Header({ lace }: { lace: ReturnType<typeof useLaceWallet> }) {
         <WalletButton lace={lace} />
       </div>
     </header>
-  )
-}
-
-function WalletButton({ lace }: { lace: ReturnType<typeof useLaceWallet> }) {
-  const { status, error, connect, disconnect, wallets, selectedWallet, selectWallet } = lace
-  const [busy, setBusy] = useState(false)
-
-  const onClick = async () => {
-    setBusy(true)
-    try {
-      if (status.kind === 'connected') {
-        await disconnect()
-      } else {
-        await connect()
-      }
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  if (status.kind === 'connected') {
-    return (
-      <div className="wallet">
-        <span className="wallet-addr" title={status.address}>
-          <span className="dot ok" /> {shortAddress(status.address)}
-        </span>
-        <span className="wallet-net">
-          {status.walletName ? `${status.walletName} · ` : ''}
-          {status.networkId}
-        </span>
-        <button className="wallet-btn" onClick={onClick} disabled={busy}>
-          Disconnect
-        </button>
-      </div>
-    )
-  }
-
-  const selectedIndex = wallets.findIndex((w) => w === selectedWallet)
-
-  return (
-    <div className="wallet">
-      {wallets.length > 1 && (
-        <select
-          className="wallet-select"
-          value={selectedIndex === -1 ? '' : String(selectedIndex)}
-          disabled={busy || status.kind === 'connecting'}
-          onChange={(e) => {
-            const i = Number(e.target.value)
-            selectWallet(wallets[i] ?? null)
-          }}
-          aria-label="Choose wallet"
-        >
-          {wallets.map((w, i) => (
-            <option key={w.rdns ?? `wallet-${i}`} value={i}>
-              {walletDisplayName(w)}
-            </option>
-          ))}
-        </select>
-      )}
-      <button className="wallet-btn" onClick={onClick} disabled={busy || status.kind === 'connecting'}>
-        {busy || status.kind === 'connecting' ? 'Connecting…' : 'Connect wallet'}
-      </button>
-      {status.kind === 'unavailable' && (
-        <span className="wallet-hint">
-          Wallet not detected —{' '}
-          <a href={LACE_INSTALL_URL} target="_blank" rel="noreferrer">
-            install a Midnight wallet
-          </a>
-          , then refresh
-        </span>
-      )}
-      {error && <span className="wallet-error">⚠ {error}</span>}
-    </div>
-  )
-}
-
-// ─── Wallet gate ───────────────────────────────────────────────────────────────
-
-function WalletGate({ lace, children }: { lace: ReturnType<typeof useLaceWallet>; children: React.ReactNode }) {
-  const { status, error, connect, wallets, selectedWallet, selectWallet } = lace
-  if (status.kind === 'connected') return <>{children}</>
-
-  const selectedIndex = wallets.findIndex((w) => w === selectedWallet)
-
-  return (
-    <div className="wallet-gate">
-      <p>Connect your wallet to perform on-chain actions.</p>
-      {status.kind === 'unavailable' && (
-        <p className="wallet-hint">
-          Wallet not detected —{' '}
-          <a href={LACE_INSTALL_URL} target="_blank" rel="noreferrer">
-            install a Midnight wallet
-          </a>
-          , then refresh
-        </p>
-      )}
-      {error && <p className="wallet-error">⚠ {error}</p>}
-      {wallets.length > 1 && (
-        <select
-          className="wallet-select"
-          value={selectedIndex === -1 ? '' : String(selectedIndex)}
-          disabled={status.kind === 'connecting'}
-          onChange={(e) => {
-            const i = Number(e.target.value)
-            selectWallet(wallets[i] ?? null)
-          }}
-          aria-label="Choose wallet"
-        >
-          {wallets.map((w, i) => (
-            <option key={w.rdns ?? `wallet-${i}`} value={i}>
-              {walletDisplayName(w)}
-            </option>
-          ))}
-        </select>
-      )}
-      <button className="wallet-btn" onClick={() => connect()} disabled={status.kind === 'connecting'}>
-        {status.kind === 'connecting' ? 'Connecting…' : 'Connect wallet'}
-      </button>
-    </div>
   )
 }
 
