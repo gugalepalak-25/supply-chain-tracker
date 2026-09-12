@@ -1,9 +1,59 @@
 # Supply Chain Tracker
 
-Track a product's journey from manufacturer → distributor → consumer on the
-[Midnight](https://midnight.network) blockchain. Every checkpoint is an on-chain
-event, and consumers can scan a QR code to verify authenticity — **in
-zero-knowledge**, without revealing the product's secret seal codes.
+> Zero-knowledge product authenticity platform on Midnight blockchain.
+
+## Live Demo
+
+https://supply-chain-tracker-nu.vercel.app
+
+## Contract Address
+
+| Network | Address |
+|----------|---------|
+| Preprod | `307597f9daf7343037f33df1bc02dc12911341ea3146ad0ef1ebe1ddc52a959c` |
+
+## What This Does
+
+A zero-knowledge product authenticity platform where manufacturers register batches with secret seal codes, every handoff is recorded as an on-chain checkpoint, and consumers scan a QR code to confirm a product is genuine — the proof is verified in ZK against the ledger's commitment, so neither the seal code nor the supply chain's movements are ever exposed to competitors.
+
+## Privacy Model
+
+- **What is PUBLIC**: Product name, manufacturer, stage, location, event notes, SHA-256 commitments of seal codes, verification count
+- **What is PRIVATE**: The actual seal codes (`batchSecret`, `handoffSecret`) — the preimages behind the on-chain commitments
+- **What the user PROVES without revealing**: Knowledge of a secret whose hash matches the on-chain commitment, without revealing the secret itself
+
+## Privacy Claim
+
+An on-chain observer sees that a valid proof was submitted but cannot see the actual seal codes or which physical unit was handled. The ZK circuit proves knowledge of a SHA-256 preimage without revealing it.
+
+## Tech Stack
+
+- Midnight network
+- Compact (smart contract language)
+- Midnight.js SDK
+- React + Vite
+- Lace wallet
+
+## Prerequisites
+
+- Lace wallet installed
+- Node.js v22
+
+## Run Locally
+
+```bash
+git clone https://github.com/gugalepalak-25/Supply-chian-tracker.git
+cd Supply-chian-tracker
+npm install
+npm run frontend:install
+npm run frontend:dev
+```
+
+Open http://localhost:3000
+
+## Demo Video
+
+[PLACEHOLDER — I will add the link after recording]
 
 ## Product idea
 
@@ -17,6 +67,32 @@ the ledger's commitment, so neither the seal code nor the supply chain's
 movements are ever exposed to competitors. Brands get an auditable,
 privacy-preserving chain of custody; consumers get trust backed by a public
 ledger, not a hologram.
+
+## Public state vs private witness
+
+The core privacy model is straightforward: **what's on the ledger is public, what's
+in the proof is private.**
+
+| Visibility | Data | Stored where |
+|---|---|---|
+| **Public (on-chain)** | Product name, manufacturer, stage, location, event notes, SHA-256 commitments of seal codes, verification count | Midnight ledger — readable by anyone via the indexer |
+| **Private (witness)** | The actual seal codes (`batchSecret`, `handoffSecret`) — the preimages behind the on-chain commitments | Never on-chain. Held locally in `.supply-chain-secrets.json` (CLI) or in-memory (browser). Fed into the ZK circuit as private inputs during proof generation. |
+
+When a manufacturer **registers** a product, the two seal codes are hashed with
+domain-separated SHA-256 (`sc:auth:` and `sc:authz:`) and only the resulting
+32-byte commitments are stored on-chain. The raw codes are printed once for the
+user to save, then discarded from the transaction.
+
+When a distributor **records a checkpoint** or a consumer **verifies
+authenticity**, the Midnight ZK circuit proves that the prover knows a secret
+whose hash matches the on-chain commitment — without revealing the secret
+itself. Competitors observing the ledger see that a valid proof was submitted,
+but learn nothing about the actual seal codes or which physical unit was handled.
+
+This is enforced at the circuit level: the Compact contract declares the seal
+codes as private witness fields, and the `compact-runtime` simulator tests
+(see `tests/supply-chain.test.ts:217-232`) assert that these values never
+appear in the decoded ledger state or VM state.
 
 ## What it demonstrates
 
