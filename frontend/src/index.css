@@ -582,3 +582,39 @@ label {
   color: #f87171;
   font-size: 13px;
 }
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  header {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .wallet {
+    flex-wrap: wrap;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .modal {
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  main {
+    padding: 16px;
+  }
+  .product-layout {
+    grid-template-columns: 1fr;
+  }
+  .actions {
+    flex-direction: column;
+  }
+  .seal-check-row {
+    flex-direction: column;
+  }
+}
