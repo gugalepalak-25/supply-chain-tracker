@@ -765,3 +765,59 @@ label {
     max-height: 120px;
   }
 }
+
+/* Transaction history table */
+.tx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.tx-table th,
+.tx-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.tx-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tx-table tbody tr:hover {
+  background: var(--panel-2);
+}
+
+.tx-stage {
+  font-weight: 600;
+}
+
+.tx-time {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tx-notes {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .tx-table {
+    font-size: 12px;
+  }
+  .tx-table th,
+  .tx-table td {
+    padding: 8px 6px;
+  }
+  .tx-notes {
+    display: none;
+  }
+}
