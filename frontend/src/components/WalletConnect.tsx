@@ -40,7 +40,7 @@ export function WalletButton({ lace }: { lace: LaceWalletState }) {
           {status.walletName ? `${status.walletName} · ` : ''}
           {status.networkId}
         </span>
-        <button className="wallet-btn" onClick={onClick} disabled={busy}>
+        <button className="wallet-btn" onClick={onClick} disabled={busy} aria-label="Disconnect wallet">
           Disconnect
         </button>
       </div>
@@ -69,7 +69,7 @@ export function WalletButton({ lace }: { lace: LaceWalletState }) {
           ))}
         </select>
       )}
-      <button className="wallet-btn" onClick={onClick} disabled={busy || status.kind === 'connecting'}>
+      <button className="wallet-btn" onClick={onClick} disabled={busy || status.kind === 'connecting'} aria-label={busy || status.kind === 'connecting' ? 'Connecting to wallet' : 'Connect wallet'}>
         {busy || status.kind === 'connecting' ? 'Connecting…' : 'Connect wallet'}
       </button>
       {status.kind === 'unavailable' && (

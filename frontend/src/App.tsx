@@ -33,10 +33,10 @@ export default function App() {
     <ErrorBoundary>
       <div className="app">
         <Header lace={lace} />
-        <main>
+        <main role="main" aria-label="Supply chain tracker">
           {route.view === 'dashboard' ? <Dashboard lace={lace} /> : <ProductView key={route.id} productId={route.id} lace={lace} />}
         </main>
-        <footer>
+        <footer role="contentinfo">
           Supply Chain Tracker · zero-knowledge provenance on Midnight · demo (local devnet)
         </footer>
         <ToastContainer />
@@ -51,8 +51,8 @@ function Header({ lace }: { lace: ReturnType<typeof useLaceWallet> }) {
     api.health().then(setHealth).catch(() => setHealth(null))
   }, [])
   return (
-    <header>
-      <div className="brand" onClick={() => (window.location.hash = '#/')}>
+    <header role="banner">
+      <div className="brand" onClick={() => (window.location.hash = '#/')} tabIndex={0} role="link" aria-label="Go to dashboard">
         <span className="logo">◈</span>
         <div>
           <h1>Supply Chain Tracker</h1>
