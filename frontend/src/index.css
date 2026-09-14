@@ -741,3 +741,27 @@ label {
   color: #34d399;
   border: 1px solid rgba(52, 211, 153, 0.3);
 }
+
+/* QR code responsive */
+.qr-img {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.qr-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .qr-img, .qr-placeholder {
+    max-width: 120px;
+    max-height: 120px;
+  }
+}
