@@ -3,6 +3,9 @@ import QR from './QR'
 import { api, type HealthInfo, type Product } from './api'
 import { useLaceWallet } from './useLaceWallet'
 import { WalletButton, WalletGate } from './components/WalletConnect'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { ToastContainer, showToast } from './components/Toast'
+import { PublicBadge, PrivateBadge, ProvedBadge } from './components/PrivacyBadges'
 
 const STAGE_COLORS: Record<number, string> = {
   0: '#f59e0b',
@@ -27,15 +30,18 @@ export default function App() {
   }, [])
 
   return (
-    <div className="app">
-      <Header lace={lace} />
-      <main>
-        {route.view === 'dashboard' ? <Dashboard lace={lace} /> : <ProductView key={route.id} productId={route.id} lace={lace} />}
-      </main>
-      <footer>
-        Supply Chain Tracker · zero-knowledge provenance on Midnight · demo (local devnet)
-      </footer>
-    </div>
+    <ErrorBoundary>
+      <div className="app">
+        <Header lace={lace} />
+        <main>
+          {route.view === 'dashboard' ? <Dashboard lace={lace} /> : <ProductView key={route.id} productId={route.id} lace={lace} />}
+        </main>
+        <footer>
+          Supply Chain Tracker · zero-knowledge provenance on Midnight · demo (local devnet)
+        </footer>
+        <ToastContainer />
+      </div>
+    </ErrorBoundary>
   )
 }
 
