@@ -6,6 +6,7 @@ import { WalletButton, WalletGate } from './components/WalletConnect'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastContainer, showToast } from './components/Toast'
 import { PublicBadge, PrivateBadge, ProvedBadge } from './components/PrivacyBadges'
+import { Footer } from './components/Footer'
 
 const STAGE_COLORS: Record<number, string> = {
   0: '#f59e0b',
@@ -36,9 +37,7 @@ export default function App() {
         <main role="main" aria-label="Supply chain tracker">
           {route.view === 'dashboard' ? <Dashboard lace={lace} /> : <ProductView key={route.id} productId={route.id} lace={lace} />}
         </main>
-        <footer role="contentinfo">
-          Supply Chain Tracker · zero-knowledge provenance on Midnight · demo (local devnet)
-        </footer>
+        <Footer />
         <ToastContainer />
       </div>
     </ErrorBoundary>
