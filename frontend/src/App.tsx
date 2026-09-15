@@ -4,8 +4,7 @@ import { api, type HealthInfo, type Product } from './api'
 import { useLaceWallet } from './useLaceWallet'
 import { WalletButton, WalletGate } from './components/WalletConnect'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { ToastContainer, showToast } from './components/Toast'
-import { PublicBadge, PrivateBadge, ProvedBadge } from './components/PrivacyBadges'
+import { ToastContainer } from './components/Toast'
 import { Footer } from './components/Footer'
 
 const STAGE_COLORS: Record<number, string> = {

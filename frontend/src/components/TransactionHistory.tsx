@@ -34,8 +34,7 @@ export function TransactionHistory({ events }: TransactionHistoryProps) {
           <th scope="col">#</th>
           <th scope="col">Stage</th>
           <th scope="col">Location</th>
-          <th scope="col">Time</th>
-          <th scope="col">Notes</th>
+          <th scope="col">Note</th>
         </tr>
       </thead>
       <tbody>
@@ -48,8 +47,7 @@ export function TransactionHistory({ events }: TransactionHistoryProps) {
               </span>
             </td>
             <td>{ev.location || '—'}</td>
-            <td className="tx-time">{new Date(Number(ev.timestamp) * 1000).toLocaleString()}</td>
-            <td className="tx-notes">{ev.notes || '—'}</td>
+            <td className="tx-notes">{ev.note || '—'}</td>
           </tr>
         ))}
       </tbody>

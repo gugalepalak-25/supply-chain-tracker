@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export interface Toast {
   id: string
@@ -33,7 +33,8 @@ export function useToasts(): Toast[] {
   const [state, setState] = useState(toasts)
   useEffect(() => {
     listeners.add(setState)
-    return () => listeners.delete(setState)
+    const unsub = () => { listeners.delete(setState) }
+    return unsub
   }, [])
   return state
 }
