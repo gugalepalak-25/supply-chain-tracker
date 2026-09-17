@@ -9,7 +9,7 @@ import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-p
 import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import * as Allowlist from '../contracts/private-allowlist/contract/index.js';
 
-import { INDEXER_URL, INDEXER_WS_URL } from './config';
+import { INDEXER_URL, INDEXER_WS_URL, ALLOWLIST_CONTRACT_ADDRESS } from './config';
 import { bytesToHex, hexToBytes } from './hex';
 import {
   createInMemoryPrivateStateProvider,
@@ -19,14 +19,12 @@ import {
 
 // ─── Configuration ─────────────────────────────────────────────────────────
 
-let ALLOWLIST_CONTRACT_ADDRESS = '';
-
-export function setAllowlistContractAddress(addr: string) {
-  ALLOWLIST_CONTRACT_ADDRESS = addr;
-}
-
 export function getAllowlistContractAddress(): string {
   return ALLOWLIST_CONTRACT_ADDRESS;
+}
+
+export function isAllowlistDeployed(): boolean {
+  return ALLOWLIST_CONTRACT_ADDRESS.length > 0;
 }
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -167,6 +165,9 @@ export async function addMember(
   wallet: ConnectedAPI,
   label: string,
 ): Promise<{ secret: string; commitment: string }> {
+  if (!ALLOWLIST_CONTRACT_ADDRESS) {
+    throw new Error('Allowlist contract not deployed. Set VITE_ALLOWLIST_CONTRACT_ADDRESS.');
+  }
   const contract = await getDeployedContract(wallet);
   const secret = randomSecret();
   const commitment = await computeMemberCommitment(secret);

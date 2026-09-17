@@ -15,6 +15,7 @@ import {
 import {
   readAllowlist,
   readAccessLog,
+  isAllowlistDeployed,
   type AllowlistMember,
   type AccessEvent,
 } from './chain-allowlist'
@@ -437,6 +438,10 @@ function AllowlistPage({ lace }: { lace: ReturnType<typeof useLaceWallet> }) {
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
+    if (!isAllowlistDeployed()) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
       const [m, log] = await Promise.all([readAllowlist(), readAccessLog()])
@@ -450,6 +455,21 @@ function AllowlistPage({ lace }: { lace: ReturnType<typeof useLaceWallet> }) {
   }, [])
 
   useEffect(() => { refresh() }, [refresh])
+
+  if (!isAllowlistDeployed()) {
+    return (
+      <div className="allowlist-page">
+        <div className="page-header">
+          <h2>Private Allowlist Access</h2>
+        </div>
+        <div className="allowlist-admin" style={{ textAlign: 'center', padding: '40px' }}>
+          <p>⚠️ Allowlist contract not deployed yet.</p>
+          <p className="muted">Set <code>VITE_ALLOWLIST_CONTRACT_ADDRESS</code> in your .env to enable this feature.</p>
+          <p className="muted">Deploy the contract with: <code>npx tsx src/deploy.ts --contract private-allowlist</code></p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="allowlist-page">

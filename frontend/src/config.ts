@@ -14,7 +14,7 @@ export const NETWORK_ID: string = env.VITE_NETWORK_ID ?? 'preprod';
 
 /** On-chain contract address the app reads from and writes to. */
 export const CONTRACT_ADDRESS: string =
-  env.VITE_CONTRACT_ADDRESS ?? '5e08b7928d3c14c8605b7aa21117532525559a14784a71130b4def286d56786d';
+  env.VITE_CONTRACT_ADDRESS ?? '307597f9daf7343037f33df1bc02dc12911341ea3146ad0ef1ebe1ddc52a959c';
 
 /** Public indexer (GraphQL + WebSocket). */
 export const INDEXER_URL: string =
@@ -38,3 +38,7 @@ export type ProvingMode = 'wallet' | 'server';
 export const PROVING_MODE: ProvingMode = (env.VITE_PROVING as ProvingMode) ?? 'wallet';
 
 export const PROOF_SERVER_URL: string = env.VITE_PROOF_SERVER_URL ?? 'http://127.0.0.1:6300';
+
+/** Contract address for the Private Allowlist Access feature. */
+export const ALLOWLIST_CONTRACT_ADDRESS: string =
+  env.VITE_ALLOWLIST_CONTRACT_ADDRESS ?? '';
