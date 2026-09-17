@@ -947,6 +947,79 @@ label {
   font-size: 12px;
 }
 
+/* Secret display */
+.secret-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.copy-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s;
+}
+
+.copy-btn:hover {
+  background: var(--border);
+}
+
+.secret-instructions {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.secret-instructions ul {
+  margin: 4px 0 8px 20px;
+  padding: 0;
+}
+
+.secret-instructions li {
+  margin: 4px 0;
+  color: var(--muted);
+}
+
+/* Prove panel help */
+.prove-help {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.prove-help p {
+  margin: 4px 0;
+}
+
+.prove-privacy-note {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(168, 85, 247, 0.05);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.prove-privacy-note ul {
+  margin: 4px 0 0 20px;
+  padding: 0;
+}
+
+.prove-privacy-note li {
+  margin: 4px 0;
+  color: var(--muted);
+}
+
 /* Allowlist page layout */
 .allowlist-page {
   max-width: 900px;

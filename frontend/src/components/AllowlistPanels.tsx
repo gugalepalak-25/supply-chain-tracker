@@ -21,15 +21,15 @@ interface AdminPanelProps {
 export function AllowlistAdminPanel({ wallet, members, onRefresh }: AdminPanelProps) {
   const [label, setLabel] = useState('')
   const [adding, setAdding] = useState(false)
-  const [newSecret, setNewSecret] = useState<string | null>(null)
+  const [newMember, setNewMember] = useState<{ label: string; secret: string; commitment: string } | null>(null)
 
   const handleAdd = useCallback(async () => {
     if (!label.trim()) return
     setAdding(true)
     try {
       const result = await addMember(wallet, label.trim())
-      setNewSecret(result.secret)
-      showToast(`Member "${label}" added. Secret: ${result.secret.slice(0, 16)}...`, 'success')
+      setNewMember({ label: label.trim(), secret: result.secret, commitment: result.commitment })
+      showToast(`Member "${label}" added. Share their secret privately.`, 'success')
       setLabel('')
       onRefresh()
     } catch (err) {
@@ -38,6 +38,12 @@ export function AllowlistAdminPanel({ wallet, members, onRefresh }: AdminPanelPr
       setAdding(false)
     }
   }, [wallet, label, onRefresh])
+
+  const copySecret = useCallback(async () => {
+    if (!newMember) return
+    await navigator.clipboard.writeText(newMember.secret)
+    showToast('Secret copied to clipboard', 'info')
+  }, [newMember])
 
   return (
     <div className="allowlist-admin">
@@ -57,11 +63,30 @@ export function AllowlistAdminPanel({ wallet, members, onRefresh }: AdminPanelPr
         </button>
       </div>
 
-      {newSecret && (
+      {newMember && (
         <div className="secret-display">
-          <p><strong>⚠ Save this secret — it will NOT be shown again:</strong></p>
-          <code className="secret-code">{newSecret}</code>
-          <p className="muted">Commitment stored on-chain. Use this secret to prove membership.</p>
+          <p><strong>⚠ Member "{newMember.label}" added!</strong></p>
+          <p style={{ marginTop: 8 }}>Their private secret (share this privately, never on-chain):</p>
+          <div className="secret-row">
+            <code className="secret-code">{newMember.secret}</code>
+            <button className="copy-btn" onClick={copySecret} title="Copy to clipboard">
+              📋
+            </button>
+          </div>
+          <div className="secret-instructions">
+            <p><strong>How to share this secret with the member:</strong></p>
+            <ul>
+              <li>Send it via a <strong>private channel</strong> (Signal, encrypted email, in-person)</li>
+              <li><strong>Never</strong> post it publicly, in chat, or on social media</li>
+              <li>The member should <strong>save it securely</strong> — it cannot be recovered</li>
+            </ul>
+            <p><strong>What the member does with it:</strong></p>
+            <ul>
+              <li>Paste it into the "Prove Membership" panel on this page</li>
+              <li>Click "Prove Membership" — their identity stays hidden</li>
+              <li>The proof is logged on-chain with a random token, NOT their identity</li>
+            </ul>
+          </div>
         </div>
       )}
 
@@ -132,12 +157,24 @@ export function AllowlistProvePanel({ wallet, onProved }: ProvePanelProps) {
   return (
     <div className="allowlist-prove">
       <h3>Prove Membership</h3>
-      <p className="muted">Enter your secret to prove you're in the allowlist without revealing your identity.</p>
+
+      <div className="prove-help">
+        <p><strong>How do I get my secret?</strong></p>
+        <p className="muted">
+          Ask the <strong>allowlist admin</strong> to add you as a member.
+          They will receive a 64-character hex secret when they register you.
+          They must share it with you through a <strong>private channel</strong>
+          (Signal, encrypted email, in-person).
+        </p>
+        <p className="muted" style={{ marginTop: 8 }}>
+          Your secret looks like: <code>a1b2c3d4e5f6…</code> (64 hex characters)
+        </p>
+      </div>
 
       <div className="prove-form">
         <input
           type="text"
-          placeholder="Your 64-char hex secret"
+          placeholder="Paste your 64-char hex secret here"
           value={secret}
           onChange={(e) => setSecret(e.target.value)}
           disabled={proving}
@@ -150,11 +187,21 @@ export function AllowlistProvePanel({ wallet, onProved }: ProvePanelProps) {
         </button>
       </div>
 
+      <div className="prove-privacy-note">
+        <p>🔒 <strong>What happens when you prove:</strong></p>
+        <ul>
+          <li>Your secret is used to compute a commitment (hash)</li>
+          <li>The commitment is checked against the on-chain allowlist</li>
+          <li>A random token is logged — your identity is <strong>NOT</strong> revealed</li>
+          <li>Your secret is <strong>never</strong> stored on-chain or in any database</li>
+        </ul>
+      </div>
+
       {result && (
         <div className="prove-result">
           <p>✅ <strong>Membership proved!</strong></p>
           <p className="muted">Token: {result.token.slice(0, 16)}…</p>
-          <p className="muted">Your identity was NOT revealed.</p>
+          <p className="muted">Your identity was NOT revealed on-chain.</p>
         </div>
       )}
     </div>
@@ -175,7 +222,10 @@ export function AllowlistAccessLog({ events }: AccessLogProps) {
 
   return (
     <div className="allowlist-log">
-      <h4>Access Log</h4>
+      <h4>Access Log (proven memberships)</h4>
+      <p className="muted" style={{ marginBottom: 12 }}>
+        Each row shows a successful membership proof. The member hash is the commitment (not the secret).
+      </p>
       <table className="tx-table">
         <thead>
           <tr>
