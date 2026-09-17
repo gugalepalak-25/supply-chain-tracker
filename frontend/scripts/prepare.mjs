@@ -8,11 +8,14 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..', '..'); // repo root
-const src = join(root, 'contracts', 'managed', 'supply-chain');
-const dest = join(__dirname, '..', 'public', 'managed', 'supply-chain');
-const contractDest = join(__dirname, '..', 'contracts', 'supply-chain', 'contract');
 
-if (!existsSync(join(src, 'contract', 'index.js'))) {
+// ─── Supply Chain contract ────────────────────────────────────────────────
+
+const scSrc = join(root, 'contracts', 'managed', 'supply-chain');
+const scDest = join(__dirname, '..', 'public', 'managed', 'supply-chain');
+const scContractDest = join(__dirname, '..', 'contracts', 'supply-chain', 'contract');
+
+if (!existsSync(join(scSrc, 'contract', 'index.js'))) {
   console.error(
     '  ⚠ Compiled contract not found at contracts/managed/supply-chain.\n' +
     '    Run `npm run compile` at the repo root first.',
@@ -20,25 +23,21 @@ if (!existsSync(join(src, 'contract', 'index.js'))) {
   process.exit(1);
 }
 
-// Copy the contract JS + types to frontend/contracts/supply-chain/contract/
-// This ensures the contract uses the SAME compact-runtime instance as the
-// rest of the frontend (fixes cross-package ChargedState instanceof errors).
-mkdirSync(contractDest, { recursive: true });
-copyFileSync(join(src, 'contract', 'index.js'), join(contractDest, 'index.js'));
-if (existsSync(join(src, 'contract', 'index.d.ts'))) {
-  copyFileSync(join(src, 'contract', 'index.d.ts'), join(contractDest, 'index.d.ts'));
+mkdirSync(scContractDest, { recursive: true });
+copyFileSync(join(scSrc, 'contract', 'index.js'), join(scContractDest, 'index.js'));
+if (existsSync(join(scSrc, 'contract', 'index.d.ts'))) {
+  copyFileSync(join(scSrc, 'contract', 'index.d.ts'), join(scContractDest, 'index.d.ts'));
 }
-if (existsSync(join(src, 'contract', 'index.js.map'))) {
-  copyFileSync(join(src, 'contract', 'index.js.map'), join(contractDest, 'index.js.map'));
+if (existsSync(join(scSrc, 'contract', 'index.js.map'))) {
+  copyFileSync(join(scSrc, 'contract', 'index.js.map'), join(scContractDest, 'index.js.map'));
 }
-console.log(`  ✓ Copied contract index.js + types to frontend/contracts/supply-chain/contract/`);
+console.log('  ✓ Copied contract index.js + types to frontend/contracts/supply-chain/contract/');
 
-const SUBDIRS = ['keys', 'zkir'];
-
-rmSync(dest, { recursive: true, force: true });
-for (const sub of SUBDIRS) {
-  const fromDir = join(src, sub);
-  const toDir = join(dest, sub);
+const SC_SUBDIRS = ['keys', 'zkir'];
+rmSync(scDest, { recursive: true, force: true });
+for (const sub of SC_SUBDIRS) {
+  const fromDir = join(scSrc, sub);
+  const toDir = join(scDest, sub);
   if (!existsSync(fromDir)) continue;
   mkdirSync(toDir, { recursive: true });
   for (const file of ['registerProduct', 'recordCheckpoint', 'verifyAuthenticity']) {
@@ -48,4 +47,40 @@ for (const sub of SUBDIRS) {
     }
   }
 }
-console.log(`  ✓ Copied zk assets to frontend/public/managed/supply-chain/`);
+console.log('  ✓ Copied zk assets to frontend/public/managed/supply-chain/');
+
+// ─── Private Allowlist contract ───────────────────────────────────────────
+
+const alSrc = join(root, 'contracts', 'managed', 'private-allowlist');
+const alDest = join(__dirname, '..', 'public', 'managed', 'private-allowlist');
+const alContractDest = join(__dirname, '..', 'contracts', 'private-allowlist', 'contract');
+
+if (existsSync(join(alSrc, 'contract', 'index.js'))) {
+  mkdirSync(alContractDest, { recursive: true });
+  copyFileSync(join(alSrc, 'contract', 'index.js'), join(alContractDest, 'index.js'));
+  if (existsSync(join(alSrc, 'contract', 'index.d.ts'))) {
+    copyFileSync(join(alSrc, 'contract', 'index.d.ts'), join(alContractDest, 'index.d.ts'));
+  }
+  if (existsSync(join(alSrc, 'contract', 'index.js.map'))) {
+    copyFileSync(join(alSrc, 'contract', 'index.js.map'), join(alContractDest, 'index.js.map'));
+  }
+  console.log('  ✓ Copied contract index.js + types to frontend/contracts/private-allowlist/contract/');
+
+  const AL_SUBDIRS = ['keys', 'zkir'];
+  rmSync(alDest, { recursive: true, force: true });
+  for (const sub of AL_SUBDIRS) {
+    const fromDir = join(alSrc, sub);
+    const toDir = join(alDest, sub);
+    if (!existsSync(fromDir)) continue;
+    mkdirSync(toDir, { recursive: true });
+    for (const file of ['addMember', 'proveMembership', 'removeMember']) {
+      for (const ext of sub === 'keys' ? ['.prover', '.verifier'] : ['.bzkir']) {
+        const f = join(fromDir, `${file}${ext}`);
+        if (existsSync(f)) copyFileSync(f, join(toDir, `${file}${ext}`));
+      }
+    }
+  }
+  console.log('  ✓ Copied zk assets to frontend/public/managed/private-allowlist/');
+} else {
+  console.log('  ⚠ private-allowlist contract not compiled, skipping');
+}

@@ -6,6 +6,18 @@ import { WalletButton, WalletGate } from './components/WalletConnect'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastContainer } from './components/Toast'
 import { Footer } from './components/Footer'
+import { LoadingSpinner } from './components/LoadingSpinner'
+import {
+  AllowlistAdminPanel,
+  AllowlistProvePanel,
+  AllowlistAccessLog,
+} from './components/AllowlistPanels'
+import {
+  readAllowlist,
+  readAccessLog,
+  type AllowlistMember,
+  type AccessEvent,
+} from './chain-allowlist'
 
 const STAGE_COLORS: Record<number, string> = {
   0: '#f59e0b',
@@ -14,7 +26,13 @@ const STAGE_COLORS: Record<number, string> = {
   3: '#10b981',
 }
 
-function parseHash(): { view: 'dashboard' } | { view: 'product'; id: string } {
+type Route =
+  | { view: 'dashboard' }
+  | { view: 'product'; id: string }
+  | { view: 'allowlist' }
+
+function parseHash(): Route {
+  if (window.location.hash === '#/allowlist') return { view: 'allowlist' }
   const match = window.location.hash.match(/^#\/product\/(.+)$/)
   if (match) return { view: 'product', id: decodeURIComponent(match[1]) }
   return { view: 'dashboard' }
@@ -34,7 +52,9 @@ export default function App() {
       <div className="app">
         <Header lace={lace} />
         <main role="main" aria-label="Supply chain tracker">
-          {route.view === 'dashboard' ? <Dashboard lace={lace} /> : <ProductView key={route.id} productId={route.id} lace={lace} />}
+          {route.view === 'dashboard' && <Dashboard lace={lace} />}
+          {route.view === 'product' && <ProductView key={route.id} productId={route.id} lace={lace} />}
+          {route.view === 'allowlist' && <AllowlistPage lace={lace} />}
         </main>
         <Footer />
         <ToastContainer />
@@ -64,6 +84,10 @@ function Header({ lace }: { lace: ReturnType<typeof useLaceWallet> }) {
             <span>contract {health.contractAddress.slice(0, 10)}… · {health.products} product{health.products === 1 ? '' : 's'}</span>
           </div>
         )}
+        <nav className="header-nav">
+          <a href="#/" className="nav-link">Products</a>
+          <a href="#/allowlist" className="nav-link">Allowlist</a>
+        </nav>
         <WalletButton lace={lace} />
       </div>
     </header>
@@ -401,6 +425,57 @@ function SealCodeVerifier({ productId, onVerified }: { productId: string; onVeri
         </button>
       </div>
       {result && <p className={result.ok ? 'verify-ok' : 'verify-fail'}>{result.msg}</p>}
+    </div>
+  )
+}
+
+// ─── Allowlist Page ────────────────────────────────────────────────────────
+
+function AllowlistPage({ lace }: { lace: ReturnType<typeof useLaceWallet> }) {
+  const [members, setMembers] = useState<AllowlistMember[]>([])
+  const [accessLog, setAccessLog] = useState<AccessEvent[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [m, log] = await Promise.all([readAllowlist(), readAccessLog()])
+      setMembers(m)
+      setAccessLog(log)
+    } catch (err) {
+      console.error('Failed to load allowlist:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { refresh() }, [refresh])
+
+  return (
+    <div className="allowlist-page">
+      <div className="page-header">
+        <h2>Private Allowlist Access</h2>
+        <p className="muted">Prove membership without revealing your identity.</p>
+      </div>
+
+      {loading ? (
+        <LoadingSpinner label="Loading allowlist…" />
+      ) : (
+        <div className="allowlist-panels">
+          <div className="panel-row">
+            <AllowlistAdminPanel
+              wallet={lace.status.kind === 'connected' ? lace : null as any}
+              members={members}
+              onRefresh={refresh}
+            />
+            <AllowlistProvePanel
+              wallet={lace.status.kind === 'connected' ? lace : null as any}
+              onProved={refresh}
+            />
+          </div>
+          <AllowlistAccessLog events={accessLog} />
+        </div>
+      )}
     </div>
   )
 }

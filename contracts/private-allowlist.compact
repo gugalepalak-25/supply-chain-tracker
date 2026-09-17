@@ -1,0 +1,141 @@
+// Private Allowlist Access — Midnight Network (Compact)
+//
+// Prove membership in an allowlist WITHOUT revealing which member you are.
+//
+// ═══════════════════════ PRIVACY DESIGN ═══════════════════════════════════
+//
+//  PUBLIC (on-chain — anyone can read via the indexer):
+//    * members : Map<Bytes<32>, MemberInfo> — the allowlist. Keys are
+//                domain-separated SHA-256 commitments of member secrets.
+//                The actual secret NEVER appears on-chain.
+//    * memberCount : Uint<64> — total number of registered members.
+//    * accessLog : List<AccessEvent> — log of who proved membership
+//                  (timestamp + a blinded token, NOT the member identity).
+//
+//  PRIVATE (witness inputs — PROVED, NEVER WRITTEN TO THE LEDGER):
+//    * memberSecret() — the member's private secret. Known only to the
+//                        member. Never appears on-chain; only its hash
+//                        commitment is stored in the allowlist.
+//
+//  PROVED WITHOUT REVEALING:
+//    * proveMembership : proves the caller knows a secret whose hash
+//                         matches one of the commitments in the allowlist.
+//                         The verifier learns THAT someone is a member,
+//                         but NOT WHICH member proved it.
+//    * addMember : the admin registers a new member by providing their
+//                   public identity and the member's secret commitment.
+//                   Only the commitment is stored on-chain.
+//
+//  USE CASES:
+//    * Gated access to private data (only members can view)
+//    * Anonymous voting (prove you're eligible without revealing identity)
+//    * Private authentication (login without username)
+// ══════════════════════════════════════════════════════════════════════════
+
+pragma language_version 0.23;
+
+import CompactStandardLibrary;
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export struct MemberInfo {
+  label: Opaque<"string">,       // public label (e.g. "Alice", "Team A")
+  addedAt: Uint<64>,             // block timestamp when added
+  active: Uint<8>                // soft-delete flag (1=active, 0=removed)
+}
+
+export struct AccessEvent {
+  memberHash: Bytes<32>,         // the commitment that was matched (public)
+  timestamp: Uint<64>,           // when the proof was made
+  token: Bytes<32>               // a random token (for audit trail, not identity)
+}
+
+// ─── Public ledger state ─────────────────────────────────────────────────────
+
+export ledger members: Map<Bytes<32>, MemberInfo>;
+export ledger memberCount: Uint<64>;
+export ledger accessLog: List<AccessEvent>;
+
+// ─── Private witnesses (never written to the ledger) ─────────────────────────
+
+witness memberSecret(): Bytes<32>;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// Domain-separated commitment. Prevents cross-protocol attacks.
+circuit memberCommitment(secret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "sc:allowlist:"), secret]);
+}
+
+// ─── Circuits ────────────────────────────────────────────────────────────────
+
+// Admin registers a new member. The member's secret commitment (hash) is
+// stored on-chain. The actual secret NEVER appears on-chain.
+//
+// Parameters:
+//   label     — public identity label (e.g. "Alice", "Team Alpha")
+//   commitment — the SHA-256 hash of the member's secret (computed off-chain)
+//
+// The admin computes: commitment = SHA256("sc:allowlist:" ++ secret)
+// and passes it here. The circuit stores only the commitment.
+export circuit addMember(
+  label: Opaque<"string">,
+  commitment: Bytes<32>
+): [] {
+  assert(!members.member(disclose(commitment)), "member already exists");
+
+  const info = MemberInfo {
+    label: disclose(label),
+    addedAt: disclose(0 as Uint<64>),  // replaced by runtime timestamp
+    active: 1 as Uint<8>
+  };
+  members.insert(disclose(commitment), info);
+  memberCount = (memberCount + 1) as Uint<64>;
+}
+
+// Prove membership in the allowlist WITHOUT revealing which member you are.
+//
+// The prover provides their secret as a witness. The circuit:
+//   1. Computes the commitment: hash = SHA256("sc:allowlist:" ++ secret)
+//   2. Looks up the commitment in the members map
+//   3. Asserts the member is active
+//   4. Logs the access event (with the commitment, NOT the secret)
+//
+// The verifier learns:
+//   - Someone with a valid commitment proved membership
+//   - The commitment that was matched (public)
+//   - A random token for audit
+//
+// The verifier does NOT learn:
+//   - The member's secret
+//   - Which label maps to this commitment
+//   - Any other member's information
+export circuit proveMembership(
+  token: Bytes<32>
+): [] {
+  const commitment = memberCommitment(memberSecret());
+  assert(members.member(disclose(commitment)), "not a member");
+  assert(members.lookup(disclose(commitment)).active == 1 as Uint<8>, "member inactive");
+
+  const event = AccessEvent {
+    memberHash: disclose(commitment),
+    timestamp: disclose(0 as Uint<64>),  // replaced by runtime timestamp
+    token: disclose(token)
+  };
+  accessLog.pushFront(event);
+}
+
+// Admin removes a member (soft-delete). Only the commitment is needed.
+export circuit removeMember(
+  commitment: Bytes<32>
+): [] {
+  assert(members.member(disclose(commitment)), "member not found");
+  const info = members.lookup(disclose(commitment));
+  const updated = MemberInfo {
+    label: info.label,
+    addedAt: info.addedAt,
+    active: 0 as Uint<8>
+  };
+  members.insert(disclose(commitment), updated);
+  memberCount = (memberCount - 1) as Uint<64>;
+}

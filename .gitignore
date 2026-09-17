@@ -25,6 +25,7 @@ frontend/public/managed/
 # The compiled supply-chain circuits are committed so Vercel/CI can build the web demo.
 contracts/managed/*
 !contracts/managed/supply-chain/
+!contracts/managed/private-allowlist/
 
 # Deployment info
 deployment.json
