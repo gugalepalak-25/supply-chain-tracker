@@ -7,9 +7,11 @@
   "license": "MIT",
   "scripts": {
     "compile": "compact compile contracts/supply-chain.compact contracts/managed/supply-chain",
-    "build": "npx tsc --noEmit || true",
+    "compile-allowlist": "compact compile contracts/private-allowlist.compact contracts/managed/private-allowlist",
+    "build": "npx tsc --noEmit",
     "setup": "npx tsx src/setup.ts",
     "deploy": "npx tsx src/deploy.ts",
+    "deploy-allowlist": "npx tsx src/deploy-allowlist.ts",
     "cli": "npx tsx src/cli.ts",
     "check-balance": "npx tsx src/check-balance.ts",
     "network": "npx tsx src/network.ts",
