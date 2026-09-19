@@ -8,10 +8,14 @@
 
 https://supply-chain-tracker-nu.vercel.app
 
-##Video 
+## Video 
 
 
-https://github.com/user-attachments/assets/191cb03c-255d-49ff-9bed-af9161b6f1fd
+
+
+https://github.com/user-attachments/assets/58c8efb0-b9e6-4b30-8b9f-c77efc564eed
+
+
 
 
 
