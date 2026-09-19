@@ -47,7 +47,10 @@ export function AllowlistAdminPanel({ wallet, members, onRefresh }: AdminPanelPr
 
   return (
     <div className="allowlist-admin">
-      <h3>Manage Allowlist</h3>
+      <h3>Admin: Add Members</h3>
+      <p className="muted" style={{ marginBottom: 12, fontSize: 13 }}>
+        Adding a member generates a private secret. Share it with them to grant access.
+      </p>
 
       <div className="add-member-form">
         <input
@@ -65,8 +68,8 @@ export function AllowlistAdminPanel({ wallet, members, onRefresh }: AdminPanelPr
 
       {newMember && (
         <div className="secret-display">
-          <p><strong>⚠ Member "{newMember.label}" added!</strong></p>
-          <p style={{ marginTop: 8 }}>Their private secret (share this privately, never on-chain):</p>
+          <p><strong>✅ Member "{newMember.label}" approved and added!</strong></p>
+          <p style={{ marginTop: 8 }}>Share this secret with them privately:</p>
           <div className="secret-row">
             <code className="secret-code">{newMember.secret}</code>
             <button className="copy-btn" onClick={copySecret} title="Copy to clipboard">
