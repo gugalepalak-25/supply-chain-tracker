@@ -183,7 +183,7 @@ function originOf(href: string): string {
 }
 
 function RegisterModal({ lace, onDone, onClose }: { lace: ReturnType<typeof useLaceWallet>; onDone: () => void; onClose: () => void }) {
-  const [form, setForm] = useState({ productId: '', name: '', manufacturer: '', location: '', note: 'Manufactured' })
+  const [form, setForm] = useState({ productId: '', name: '', manufacturer: '', location: '', note: '' })
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ batchSecretHex: string; handoffSecretHex: string; blockHeight: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -226,7 +226,7 @@ function RegisterModal({ lace, onDone, onClose }: { lace: ReturnType<typeof useL
             <label>Name <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Organic Coffee" /></label>
             <label>Manufacturer <input value={form.manufacturer} onChange={(e) => setForm({ ...form, manufacturer: e.target.value })} placeholder="Acme Farms" /></label>
             <label>Location <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Pune Plant" /></label>
-            <label>Note <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+            <label>Note <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="Optional note about this batch" /></label>
             <div className="modal-actions">
               <button onClick={onClose} disabled={busy}>Cancel</button>
               <button className="primary" onClick={submit} disabled={busy || !form.productId || !form.name || !form.manufacturer || !form.location}>
