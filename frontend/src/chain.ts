@@ -137,6 +137,11 @@ function requireWallet(): ConnectedAPI {
   return walletApi;
 }
 
+/** Get the currently connected wallet API (for use by other modules). */
+export function getConnectedWallet(): ConnectedAPI | null {
+  return walletApi;
+}
+
 async function getDeployed(): Promise<any> {
   if (!deployedPromise) {
     deployedPromise = (async () => {

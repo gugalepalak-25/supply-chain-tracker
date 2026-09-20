@@ -5,11 +5,9 @@ import {
   type AllowlistMember,
   type AccessEvent,
 } from '../chain-allowlist'
-import type { ConnectedAPI } from '@midnight-ntwrk/dapp-connector-api'
 import { showToast } from './Toast'
 
 interface AdminPanelProps {
-  wallet: ConnectedAPI
   members: AllowlistMember[]
   onRefresh: () => void
 }
@@ -18,7 +16,7 @@ interface AdminPanelProps {
  * Admin panel for managing the allowlist.
  * Add/remove members, view the full list.
  */
-export function AllowlistAdminPanel({ wallet, members, onRefresh }: AdminPanelProps) {
+export function AllowlistAdminPanel({ members, onRefresh }: AdminPanelProps) {
   const [label, setLabel] = useState('')
   const [adding, setAdding] = useState(false)
   const [newMember, setNewMember] = useState<{ label: string; secret: string; commitment: string } | null>(null)
@@ -27,7 +25,7 @@ export function AllowlistAdminPanel({ wallet, members, onRefresh }: AdminPanelPr
     if (!label.trim()) return
     setAdding(true)
     try {
-      const result = await addMember(wallet, label.trim())
+      const result = await addMember(label.trim())
       setNewMember({ label: label.trim(), secret: result.secret, commitment: result.commitment })
       showToast(`Member "${label}" added. Share their secret privately.`, 'success')
       setLabel('')
@@ -37,7 +35,7 @@ export function AllowlistAdminPanel({ wallet, members, onRefresh }: AdminPanelPr
     } finally {
       setAdding(false)
     }
-  }, [wallet, label, onRefresh])
+  }, [label, onRefresh])
 
   const copySecret = useCallback(async () => {
     if (!newMember) return
@@ -126,7 +124,6 @@ export function AllowlistAdminPanel({ wallet, members, onRefresh }: AdminPanelPr
 }
 
 interface ProvePanelProps {
-  wallet: ConnectedAPI
   onProved?: (event: AccessEvent) => void
 }
 
@@ -134,7 +131,7 @@ interface ProvePanelProps {
  * Member panel for proving membership.
  * Enter your secret to prove you're in the allowlist.
  */
-export function AllowlistProvePanel({ wallet, onProved }: ProvePanelProps) {
+export function AllowlistProvePanel({ onProved }: ProvePanelProps) {
   const [secret, setSecret] = useState('')
   const [proving, setProving] = useState(false)
   const [result, setResult] = useState<AccessEvent | null>(null)
@@ -146,7 +143,7 @@ export function AllowlistProvePanel({ wallet, onProved }: ProvePanelProps) {
     }
     setProving(true)
     try {
-      const event = await proveMembership(wallet, secret.trim())
+      const event = await proveMembership(secret.trim())
       setResult(event)
       showToast('Membership proved successfully!', 'success')
       onProved?.(event)
@@ -155,7 +152,7 @@ export function AllowlistProvePanel({ wallet, onProved }: ProvePanelProps) {
     } finally {
       setProving(false)
     }
-  }, [wallet, secret, onProved])
+  }, [secret, onProved])
 
   return (
     <div className="allowlist-prove">

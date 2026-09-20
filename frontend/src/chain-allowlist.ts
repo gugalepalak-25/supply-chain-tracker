@@ -2,7 +2,6 @@
 //
 // Prove membership in an allowlist WITHOUT revealing which member you are.
 
-import type { ConnectedAPI } from '@midnight-ntwrk/dapp-connector-api';
 import { findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
@@ -11,6 +10,7 @@ import * as Allowlist from '../contracts/private-allowlist/contract/index.js';
 
 import { INDEXER_URL, INDEXER_WS_URL, ALLOWLIST_CONTRACT_ADDRESS } from './config';
 import { bytesToHex, hexToBytes } from './hex';
+import { getConnectedWallet } from './chain';
 import {
   createInMemoryPrivateStateProvider,
   createProofProviderForWallet,
@@ -18,10 +18,6 @@ import {
 } from './providers';
 
 // ─── Configuration ─────────────────────────────────────────────────────────
-
-export function getAllowlistContractAddress(): string {
-  return ALLOWLIST_CONTRACT_ADDRESS;
-}
 
 export function isAllowlistDeployed(): boolean {
   return ALLOWLIST_CONTRACT_ADDRESS.length > 0;
@@ -78,19 +74,24 @@ export async function computeMemberCommitment(secret: Uint8Array): Promise<strin
 let deployedPromise: Promise<any> | null = null;
 
 const PRIVATE_STATE_ID = 'allowlistPrivateState';
-const compiledContract = CompiledContract.make('private-allowlist', Allowlist.Contract).pipe(
-  CompiledContract.withWitnesses(createAllowlistWitnesses(secretHolder)),
-  CompiledContract.withCompiledFileAssets(''),
-);
 
-async function getDeployedContract(wallet: ConnectedAPI) {
+function requireAllowlistWallet() {
+  const api = getConnectedWallet();
+  if (!api) {
+    throw new Error('Connect your wallet to send transactions.');
+  }
+  return api;
+}
+
+async function getDeployedContract() {
   if (deployedPromise) return deployedPromise;
 
   deployedPromise = (async () => {
+    const api = requireAllowlistWallet();
     const zkConfig = new FetchZkConfigProvider('');
     const [bridge, proofProvider] = await Promise.all([
-      createWalletBridge(wallet),
-      createProofProviderForWallet(wallet, zkConfig),
+      createWalletBridge(api),
+      createProofProviderForWallet(api, zkConfig),
     ]);
     const providers = {
       privateStateProvider: createInMemoryPrivateStateProvider(),
@@ -101,7 +102,10 @@ async function getDeployedContract(wallet: ConnectedAPI) {
       midnightProvider: bridge.midnightProvider,
     };
     return findDeployedContract(providers as any, {
-      compiledContract: compiledContract as any,
+      compiledContract: CompiledContract.make('private-allowlist', Allowlist.Contract).pipe(
+        CompiledContract.withWitnesses(createAllowlistWitnesses(secretHolder)),
+        CompiledContract.withCompiledFileAssets(''),
+      ) as any,
       contractAddress: ALLOWLIST_CONTRACT_ADDRESS,
       privateStateId: PRIVATE_STATE_ID,
       initialPrivateState: {},
@@ -162,13 +166,12 @@ export async function readAccessLog(): Promise<AccessEvent[]> {
 // ─── Circuit Calls (require wallet) ───────────────────────────────────────
 
 export async function addMember(
-  wallet: ConnectedAPI,
   label: string,
 ): Promise<{ secret: string; commitment: string }> {
   if (!ALLOWLIST_CONTRACT_ADDRESS) {
     throw new Error('Allowlist contract not deployed. Set VITE_ALLOWLIST_CONTRACT_ADDRESS.');
   }
-  const contract = await getDeployedContract(wallet);
+  const contract = await getDeployedContract();
   const secret = randomSecret();
   const commitment = await computeMemberCommitment(secret);
 
@@ -183,10 +186,12 @@ export async function addMember(
 }
 
 export async function proveMembership(
-  wallet: ConnectedAPI,
   secretHex: string,
 ): Promise<AccessEvent> {
-  const contract = await getDeployedContract(wallet);
+  if (!ALLOWLIST_CONTRACT_ADDRESS) {
+    throw new Error('Allowlist contract not deployed.');
+  }
+  const contract = await getDeployedContract();
   const secret = hexToBytes(secretHex);
   const token = randomSecret();
 
@@ -203,9 +208,11 @@ export async function proveMembership(
 }
 
 export async function removeMember(
-  wallet: ConnectedAPI,
   commitmentHex: string,
 ): Promise<void> {
-  const contract = await getDeployedContract(wallet);
+  if (!ALLOWLIST_CONTRACT_ADDRESS) {
+    throw new Error('Allowlist contract not deployed.');
+  }
+  const contract = await getDeployedContract();
   await contract.callTx.removeMember(hexToBytes(commitmentHex));
 }

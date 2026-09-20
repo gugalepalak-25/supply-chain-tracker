@@ -432,7 +432,7 @@ function SealCodeVerifier({ productId, onVerified }: { productId: string; onVeri
 
 // ─── Allowlist Page ────────────────────────────────────────────────────────
 
-function AllowlistPage({ lace }: { lace: ReturnType<typeof useLaceWallet> }) {
+function AllowlistPage(_props: { lace: ReturnType<typeof useLaceWallet> }) {
   const [members, setMembers] = useState<AllowlistMember[]>([])
   const [accessLog, setAccessLog] = useState<AccessEvent[]>([])
   const [loading, setLoading] = useState(true)
@@ -484,12 +484,10 @@ function AllowlistPage({ lace }: { lace: ReturnType<typeof useLaceWallet> }) {
         <div className="allowlist-panels">
           <div className="panel-row">
             <AllowlistAdminPanel
-              wallet={lace.status.kind === 'connected' ? lace : null as any}
               members={members}
               onRefresh={refresh}
             />
             <AllowlistProvePanel
-              wallet={lace.status.kind === 'connected' ? lace : null as any}
               onProved={refresh}
             />
           </div>
