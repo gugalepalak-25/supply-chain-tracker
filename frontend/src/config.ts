@@ -41,4 +41,4 @@ export const PROOF_SERVER_URL: string = env.VITE_PROOF_SERVER_URL ?? 'http://127
 
 /** Contract address for the Private Allowlist Access feature. */
 export const ALLOWLIST_CONTRACT_ADDRESS: string =
-  env.VITE_ALLOWLIST_CONTRACT_ADDRESS ?? '';
+  env.VITE_ALLOWLIST_CONTRACT_ADDRESS ?? 'c498506743fe67667be42665fb26628f9e602acfbb63c87d990157999e381359';
