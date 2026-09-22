@@ -19,6 +19,22 @@ import {
 
 // ─── Configuration ─────────────────────────────────────────────────────────
 
+/** Path where prepare.mjs copies the private-allowlist zk assets. */
+const ALLOWLIST_ZK_CONFIG_BASE = '/managed/private-allowlist';
+
+// FetchZkConfigProvider requires an absolute URL (an empty base throws
+// "Failed to construct 'URL': Invalid URL").
+const zkConfigProvider = new FetchZkConfigProvider<string>(
+  new URL(ALLOWLIST_ZK_CONFIG_BASE, window.location.href).toString(),
+  (...args) => fetch(...args),
+);
+
+const publicDataProvider = indexerPublicDataProvider(
+  INDEXER_URL,
+  INDEXER_WS_URL,
+  WebSocket as unknown as never,
+);
+
 export function isAllowlistDeployed(): boolean {
   return ALLOWLIST_CONTRACT_ADDRESS.length > 0;
 }
@@ -88,15 +104,14 @@ async function getDeployedContract() {
 
   deployedPromise = (async () => {
     const api = requireAllowlistWallet();
-    const zkConfig = new FetchZkConfigProvider('');
     const [bridge, proofProvider] = await Promise.all([
       createWalletBridge(api),
-      createProofProviderForWallet(api, zkConfig),
+      createProofProviderForWallet(api, zkConfigProvider),
     ]);
     const providers = {
       privateStateProvider: createInMemoryPrivateStateProvider(),
-      publicDataProvider: indexerPublicDataProvider(INDEXER_URL, INDEXER_WS_URL),
-      zkConfigProvider: zkConfig,
+      publicDataProvider,
+      zkConfigProvider,
       proofProvider,
       walletProvider: bridge.walletProvider,
       midnightProvider: bridge.midnightProvider,
@@ -115,10 +130,14 @@ async function getDeployedContract() {
   return deployedPromise;
 }
 
+/** Forget the cached contract instance (e.g. when the wallet disconnects). */
+export function resetAllowlistContract(): void {
+  deployedPromise = null;
+}
+
 // ─── Ledger Reads (no wallet required) ────────────────────────────────────
 
 export async function readAllowlist(): Promise<AllowlistMember[]> {
-  const publicDataProvider = indexerPublicDataProvider(INDEXER_URL, INDEXER_WS_URL);
   const state = await publicDataProvider.queryContractState(ALLOWLIST_CONTRACT_ADDRESS);
   if (!state || !state.data) return [];
 
@@ -138,7 +157,6 @@ export async function readAllowlist(): Promise<AllowlistMember[]> {
 }
 
 export async function readMemberCount(): Promise<number> {
-  const publicDataProvider = indexerPublicDataProvider(INDEXER_URL, INDEXER_WS_URL);
   const state = await publicDataProvider.queryContractState(ALLOWLIST_CONTRACT_ADDRESS);
   if (!state || !state.data) return 0;
 
@@ -147,7 +165,6 @@ export async function readMemberCount(): Promise<number> {
 }
 
 export async function readAccessLog(): Promise<AccessEvent[]> {
-  const publicDataProvider = indexerPublicDataProvider(INDEXER_URL, INDEXER_WS_URL);
   const state = await publicDataProvider.queryContractState(ALLOWLIST_CONTRACT_ADDRESS);
   if (!state || !state.data) return [];
 

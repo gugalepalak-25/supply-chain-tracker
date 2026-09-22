@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id'
 import type { ConnectedAPI, InitialAPI } from '@midnight-ntwrk/dapp-connector-api'
 import { setWalletApi } from './chain'
+import { resetAllowlistContract } from './chain-allowlist'
 import {
   connectWallet,
   disconnectWallet,
@@ -125,6 +126,7 @@ export function useLaceWallet(networkId = DEFAULT_NETWORK): LaceWalletState {
         apiRef.current = connection.api
         setNetworkId(connection.networkId)
         setWalletApi(connection.api)
+        resetAllowlistContract()
         setStatus({
           kind: 'connected',
           walletName: connection.walletName,
@@ -150,6 +152,7 @@ export function useLaceWallet(networkId = DEFAULT_NETWORK): LaceWalletState {
     await disconnectWallet(apiRef.current)
     apiRef.current = null
     setWalletApi(null)
+    resetAllowlistContract()
     setStatus({ kind: 'disconnected' })
     setError(null)
   }, [])
