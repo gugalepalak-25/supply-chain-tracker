@@ -77,10 +77,15 @@ export function randomSecret(): Uint8Array {
 }
 
 export async function computeMemberCommitment(secret: Uint8Array): Promise<string> {
+  // Must match the contract's memberCommitment circuit:
+  //   persistentHash<Vector<2, Bytes<32>>>([pad(32, "sc:allowlist:"), secret])
+  // which is SHA-256 over the 64-byte blob (domain padded to 32 + secret).
   const domain = new TextEncoder().encode('sc:allowlist:');
-  const combined = new Uint8Array(domain.length + secret.length);
-  combined.set(domain);
-  combined.set(secret, domain.length);
+  const pad32 = new Uint8Array(32);
+  pad32.set(domain);
+  const combined = new Uint8Array(64);
+  combined.set(pad32);
+  combined.set(secret, 32);
   const hashBuffer = await crypto.subtle.digest('SHA-256', combined);
   return bytesToHex(new Uint8Array(hashBuffer));
 }

@@ -70,15 +70,17 @@ if (!fs.existsSync(contractPath)) {
 const Allowlist = await import(pathToFileURL(contractPath).href);
 
 // Dummy witnesses — only the constructor runs during deploy.
-const compiledContract = CompiledContract.make(
-  'private-allowlist',
-  Allowlist.Contract,
+const compiledContract: any = (
+  CompiledContract.make(
+    'private-allowlist',
+    Allowlist.Contract,
+  ) as any
 ).pipe(
-  CompiledContract.withWitnesses({
+  (CompiledContract.withWitnesses as any)({
     memberSecret: () => [{}, new Uint8Array(32)],
   }),
-  CompiledContract.withCompiledFileAssets(zkConfigPath),
-) as any;
+  (CompiledContract.withCompiledFileAssets as any)(zkConfigPath),
+);
 
 // ─── Main ─────────────────────────────────────────────────────────────────
 
